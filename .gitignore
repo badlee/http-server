@@ -5,10 +5,12 @@ logs
 /*.txt
 stderr.log
 stdout.log
+*.out
+*.txt
+*.log
 *.db
 *.sqlite
 *.sqlite3
-*.log
 http-server.pid
 http-server
 .vscode
