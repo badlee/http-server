@@ -1,78 +1,103 @@
-# Protocol: MQTT
-**Syntax:** `MQTT [address]?`
+# Protocol: MQTT (Unified Real-time Hub)
 
-Le projet intègre nativement le moteur ultra-performant `mochi-mqtt` version 2.  
-Cette directive convertit instantanément un bloc `TCP` ou le multiplexeur global en un **Broker MQTT de production**.
+The `MQTT` directive transforms a port or a global multiplexer into a high-performance **MQTT v5 Broker** powered by `mochi-mqtt`. It is a core component of the **Unified Real-time Hub**, sharing a common data bus with SSE, WebSocket, and DTP.
 
 ---
 
-### Architecture de Sécurité (Sniffing Non-Destructif)
-Contrairement aux proxys TCP classiques, le `Binder` utilise un mécanisme de **non-destructive protocol sniffing** (`bufio.Peek`). 
-Cela permet :
-1. D'analyser le paquet `CONNECT` initial sans le consommer.
-2. D'appliquer les politiques `SECURITY` (IP Filtering, Geo-Block, Rate Limit) **AVANT** de passer la main au broker.
-3. De garantir que le handshake MQTT complet est reçu par le moteur `mochi-mqtt` sans perte d'octets.
-4. L'injection s'effectue via l'API `EstablishConnection`, garantissant une gestion des cycles de vie robuste et isolée pour chaque client.
+## 🏗️ Architecture
+
+### Multi-Protocol Multiplexing
+Thanks to **non-destructive protocol sniffing** (`bufio.Peek`), the server can distinguish MQTT traffic from HTTP or custom protocols on the same port.
+1.  **Handshake Sniffing**: The `Manager` detects the `CONNECT` packet.
+2.  **Sentinel Security**: Policies (`IP`, `Geo`, `Rate Limit`) are enforced **before** the broker accepts the connection.
+3.  **Bridge Execution**: Messages are dispatched to the internal pub/sub bus, allowing seamless SSE/MQTT cross-communication.
+
+### WebSocket Support
+MQTT is accessible via:
+- **Native TCP**: Default (usually port 1883).
+- **WebSockets (WSS)**: Automatically enabled when the `MQTT` directive is placed inside an `HTTPS` block or when using the `@mqtt` middleware on a specific route.
 
 ---
 
-### Configuration Rapide
+## 🚀 Configuration
 
 ```hcl
-TCP :1883
-    MQTT :1883
-        # Active la protection par mot de passe globale (Basique Auth)
-        AUTH admin password123
-        
-        # Stocke les messages QoS 1 & 2 dans GORM via SQLite/Postgres
-        # Nécessite un bloc DATABASE préalablement défini
-        STORAGE localDB
-        
-        # Applique une politique de sécurité globale (Connection-level)
-        SECURITY mqtt_firewall
-        
-        # Logique dynamique via Hooks JS (ACL, OnConnect, OnPublish)
-        OPTIONS mqtt_logic.js
-    END MQTT
-END TCP
+DATABASE "sqlite://mqtt_data.db" [default]
+
+SECURITY iot_shield
+    CONNECTION RATE 100r/s 1s burst=10
+    CONNECTION ALLOW "192.168.1.0/24"
+END SECURITY
+
+MQTT :1883
+    # L1: Socket Security
+    SECURITY iot_shield
+
+    # L5: Persistence (QoS 1 & 2)
+    STORAGE default
+    
+    # Auth & ACLs
+    AUTH "admin" "secret_pass"
+    ACL DEFINE
+        ALLOW ALL READ "public/#"
+        ALLOW USER "admin" WRITE "#"
+    END ACL
+
+    # Advanced MQTT v5 Capabilities
+    OPTIONS DEFINE
+        MAX_CLIENTS 5000
+        MESSAGE_EXPIRY 24h
+        SESSION_EXPIRY 7d
+        MAX_PACKET_SIZE 65535
+        RETAIN ON
+    END OPTIONS
+
+    # JS Logic
+    ON PUBLISH @processor "logic.js"
+END MQTT
 ```
 
 ---
 
-### Directives Supportées
+## 🛠️ Directives
 
-1. **`STORAGE [DBAlias]`**  
-   Utilise une connexion **GORM** pour la persistence. 
-   - **Résolution Globale** : Le `DBAlias` peut faire référence à une base de donnée déclarée via `DATABASE` ou initialisée automatiquement par le module **`CRUD`**.
-   - **QoS 1 & 2** : Les messages non-acquittés sont sauvegardés en DB de manière atomique.
-   - **Sessions** : Les abonnements des clients persistants survivent au redémarrage du serveur.
-   - **Migration** : Les tables `mqtt_clients`, `mqtt_retained`, etc. sont auto-migrées au démarrage du broker.
+### 1. `STORAGE [DBName]`
+Enables atomicity and persistence for **QoS 1 & 2** messages, retained messages, and persistent sessions.
+- Requires a defined `DATABASE`.
+- Automatically migrates tables: `mqtt_clients`, `mqtt_subscriptions`, `mqtt_retained`, `mqtt_inflight`.
 
-2. **`SECURITY [PolicyName]`**  
-   **Isolation au niveau Socket.** Votre courtier MQTT profite d'une encapsulation réseau complète.  
-   Avant même que le handshake MQTT ne commence, l'IP est inspectée. Si la politique `SECURITY` bloque la connexion, le socket est fermé immédiatement par le `Manager`.
+### 2. `ACL DEFINE`
+Granular access control for topics.
+```hcl
+ACL DEFINE
+    ALLOW ALL READ "sensors/+"
+    DENY  USER "guest" WRITE "sensors/#"
+    ALLOW IP "10.0.0.1" ALL "#"
+END ACL
+```
 
-3. **`BRIDGE [Url]`**  
-   Relai asynchrone local (Edge Node) renvoyant les topics vers un nœud Cloud distant (HiveMQ, AWS IoT).
-
-4. **`AUTH [User] [Pass]`**  
-   Authentification statique simple. Pour une gestion dynamique (ex: via DB), utilisez les `OPTIONS` avec des hooks JS.
-
-5. **`OPTIONS [script.js]`**  
-   Attache des Hooks JavaScript pour étendre la logique (ACL, Auth dynamique, OnPublish).
-
----
-
-### Le Pont Bidirectionnel (SSE <-> MQTT)
-
-Le `Hub SSE` et le `Broker MQTT` partagent le même bus de données interne via `HubInstance`.
-- **MQTT -> SSE** : Un message publié sur `sensor/temp` est automatiquement diffusé aux clients HTTP écoutant sur `/sse?channel=sensor/temp`.
-- **SSE -> MQTT** : Un message envoyé via l'API SSE ou un Hook JS vers un channel est re-publié sur le topic MQTT correspondant (QoS 0 par défaut).
+### 3. `OPTIONS DEFINE`
+Fine-tune the broker's behavior and MQTT v5 capabilities:
+- `MAX_CLIENTS [int]`: Maximum concurrent connections.
+- `MESSAGE_EXPIRY [duration]`: TTL for messages (e.g., `24h`).
+- `SESSION_EXPIRY [duration]`: TTL for persistent sessions (e.g., `7d`).
+- `MAX_PACKET_SIZE [bytes]`: Limit individual packet size.
+- `MAX_QOS [0|1|2]`: Enforce a maximum QoS level.
+- `RETAIN [ON|OFF]`: Enable or disable message retention.
+- `MIN_PROTOCOL [3|4|5]`: Minimum MQTT version (3=v3.1, 4=v3.1.1, 5=v5).
 
 ---
 
-### Tests et Validation
-L'architecture MQTT est validée par une suite de tests d'intégration complète (`modules/sse/mqtt_integration_test.go`) garantissant :
-- L'isolation stricte des bases de données par test (`t.TempDir()`).
-- Le bon fonctionnement des directives `SECURITY` et `STORAGE` via des fichiers `.bind` (`tests/mqtt/`).
-- La persistance des messages QoS 1 après redémarrage.
+## 🔗 The SSE/MQTT Bridge
+
+The hub provides a native bridge between browser-based SSE and industrial MQTT:
+- **Broadcasting**: Any message published to an MQTT topic is automatically emitted as an SSE event to clients subscribed to the same channel name.
+- **Injection**: Using `require('sse').publish(topic, payload)`, you can inject data into the MQTT broker directly from a JS handler.
+
+---
+
+## 🧪 Validation
+The MQTT module is verified against:
+- **Persistence Leak-testing**: Ensuring DB size remains stable under high volume.
+- **Security Interception**: Validating that blocked IPs never trigger a `CONNECT` response.
+- **Protocol Switching**: Testing seamless transitions between TCP and WebSocket clients.

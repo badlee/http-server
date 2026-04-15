@@ -94,100 +94,61 @@ END ON
 
 ---
 
-## Intégration HTTP
+### Middlewares de Sécurité (Directives `@...`)
 
-Un profil `SECURITY` peut être appliqué à différents niveaux dans un bloc `HTTP`.
+Un bloc `HTTP` peut appliquer des middlewares de sécurité nommés individuellement par route pour un contrôle granulaire.
 
-### Niveau Serveur (Global)
-Applique le WAF à toutes les routes du bloc.
+| Directive | Description | Exemple |
+|---|---|---|
+| `@WAF` | Applique l'analyse L7 Coraza sur la route. | `GET @WAF "/products"` |
+| `@IP` | Force le filtrage IP L4 (si non appliqué globalement). | `GET @IP "/internal"` |
+| `@GEO` | Force le filtrage Géo L4. | `GET @GEO "/local-only"` |
+| `@BOT` | Active la détection de bots et les défis **Proof-of-Work**. | `@BOT[threshold=60]` |
+| `@CSRF` | Injecte et vérifie les jetons CSRF (Anti-Forgery). | `POST @CSRF "/submit"` |
+| `@AUDIT` | Active la journalisation signée par **HMAC-SHA256**. | `@AUDIT[sign=true]` |
+| `@IDEMPOTENCY`| Garantit qu'une requête n'est traitée qu'une seule fois. | `@IDEMPOTENCY[header="X-Id"]`|
+| `@LIMITER` | Rate-limiting applicatif (Fiber). | `@LIMITER[max=10 window=1m]` |
+| `@HELMET` | Définit des headers de sécurité standards (CSP, HSTS). | `@HELMET` |
 
-```hcl
-HTTP 0.0.0.0:8080
-    SECURITY my_waf_profile
-    ...
-END HTTP
-```
+---
 
-### Niveau Route (Middleware)
-Applique ou surcharge le WAF pour une route spécifique.
+## Architecture Sentinelle (L4 vs L7)
 
-```hcl
-HTTP 0.0.0.0:8080
-    // Utilise le profil "api_rules" pour cette route
-    GET @SECURITY[api_rules] "/api/data" HANDLER api.js
-    
-    // Désactive totalement le WAF pour cette route
-    GET @UNSECURE "/public/status" TEXT "OK"
-END HTTP
-```
+Il est crucial de distinguer les deux niveaux de filtrage :
+
+1.  **L4 (Socket Security)** : Géré par `AllowConnection` (TCP) et `AllowPacket` (UDP). C'est ultra-rapide car cela intervient **avant** de lire le contenu HTTP. Idéal pour le blocage massif d'IP ou de pays.
+2.  **L7 (WAF Applicatif)** : Géré par Coraza. Cela nécessite de parser les headers et le corps de la requête. Cela permet de bloquer des attaques précises comme `DROP TABLE users` dans un champ de formulaire.
 
 ---
 
 ## Exemple Complet
 
 ```hcl
-SECURITY global_waf [default]
+SECURITY cluster_shield [default]
     ENGINE On
-    OWASP "./rules/coreruleset/*.conf"
+    OWASP "./crs/*.conf"
 
-    RULES DEFINE
-        # Bloquer les tentatives d'injection de commande simples
-        RULE "ARGS:cmd" "@contains exec" "id:1001,phase:2,deny,status:403"
-    END RULES
+    # L1: Filtrage Socket (Ultra-rapide)
+    CONNECTION RATE 500r/s 1s burst=50
+    GEOJSON office_zone "office.geojson"
+    CONNECTION ALLOW office_zone
 
-    # Log personnalisé lors d'un blockage
-    ON INTERRUPTED BEGIN
-        log("WAF BLOCK: " + context.IP() + " targetted " + context.Path());
-        context.Set("X-Security-Header", "Filtered");
-    END ON
-
-    # ----- Network Layer Security Examples -----
-
-    # Ex: 50 requêtes par seconde, fenêtre de 1 min, burst de 10
-    CONNECTION RATE 50r/s 1m burst=10 [mode=ip]
-
-    # Syntaxe directe : ALLOW/DENY [IP|CIDR|OLC]
-    CONNECTION ALLOW 192.168.1.0/24
-    CONNECTION DENY  "889CM4V2+PQ"  // Blocage d'une zone géographique précise (Plus Code)
-    
-    # GeoJSON: Support exhaustif pour FeatureCollection et Feature
-    GEOJSON ma_zone "data/complex.geojson"
-    CONNECTION ALLOW ma_zone 
-
-    # Syntaxe Bloc : Logique programmable (Allow/Reject)
-    CONNECTION IP BEGIN [whitelist=127.0.0.1]
-        // CONN expose : ip, port, current_rate, total_connections
-        if (CONN.ip === args.whitelist) return allow();
-        
-        if (CONN.current_rate > 200) {
-            log("High rate detected from " + CONN.ip);
-            return reject("Rate limit exceeded");
-        }
-        allow();
-    END CONNECTION
-
-    # Syntaxe Bloc : Filtrage fin (Ville, ISP, ASN)
-    CONNECTION GEO BEGIN
-        // GEO expose les données de la base chargée
-        if (GEO.country !== "GN" && GEO.country !== "GA") {
-            return reject("Service unavailable in your country");
-        }
-        
-        // Autoriser seulement les ASNs des opérateurs locaux partenaires
-        if (GEO.asn === 37282) return allow(); // Exemple ASN Orange GN
-        
-        allow();
-    END CONNECTION
+    # L5: Audit Log immuable
+    AUDIT DEFINE
+        Path "security.log"
+        Signed true
+    END AUDIT
 END SECURITY
 
-HTTP 127.0.0.1:8080
-    GET "/" BEGIN
-        context.SendString("Protected Page");
-    END GET
+HTTP 0.0.0.0:8080
+    # Route publique protégée massivement (L1+L3)
+    GET @WAF "/search" HANDLER search.js
 
-    GET @UNSECURE "/health" BEGIN
-        context.SendString("Unprotected Health Check");
-    END GET
+    # Route sensible avec protection anti-bot (L4)
+    POST @WAF @BOT[js_challenge=true] "/login" HANDLER auth.js
+
+    # API avec intégrité d'audit (L5)
+    POST @WAF @AUDIT @CSRF "/api/vault" HANDLER vault.js
 END HTTP
 ```
 

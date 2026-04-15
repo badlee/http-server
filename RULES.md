@@ -25,10 +25,12 @@ Ce document définit les règles de codage et les standards à suivre pour le pr
 
 ### Payment Module
 
-1. **Provider URIs**: Use `stripe://`, `momo://` URI schemes for native providers. Use `custom` for fully scriptable providers.
+1. **Provider URIs**: Use `stripe://`, `momo://`, `cinetpay://`, `x402://`, `crypto://` URI schemes for native providers. Use `custom` for fully scriptable providers.
 2. **Webhook Phases**: Always implement `@PRE` for signature verification before `@POST` for business logic.
-3. **Custom Operations**: Each operation (`CHARGE`, `VERIFY`, `REFUND`, `CHECKOUT`, `USSD`) must define `ENDPOINT`, `METHOD`, and `RESPONSE`.
+3. **Custom Operations**: Each operation (`CHARGE`, `VERIFY`, `REFUND`, `CHECKOUT`, `PUSH`) must define `ENDPOINT`, `METHOD`, and `RESPONSE`.
 4. **JS API**: Use `require('payment')` for the default connection. Use `.get(name)` for named connections.
+5. **Identification**: Use `USER_ID_LOOKUP` to define how to identify a user across sessions for payment history purposes.
+6. **Persistence**: All payments must be recorded via the `SCHEMA` directive. If absent, a default memory-backed schema is used.
 
 ### FsRouter (File-System Routing)
 

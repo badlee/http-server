@@ -1,0 +1,123 @@
+# Database and CRUD Module
+
+The `database` module provides a Mongoose-inspired interface for managing relational databases (SQL). It allows for schema definitions, models, and CRUD operations with a syntax familiar to Node.js developers.
+
+## 1. Connection (Binder Directive)
+
+The `DATABASE` directive establishes a connection to a database provider. By default, it registers the connection globally as `database`.
+
+### Syntax
+```hcl
+DATABASE [provider_url] [default?]
+    NAME [js_name]      // Name for require('db').get(js_name)
+    [Sub-directives...]
+END DATABASE
+```
+
+### Supported Providers
+- **SQLite**: `sqlite:///path/to/db.sqlite` or `:memory:`
+- **PostgreSQL**: `postgres://user:pass@localhost:5432/mydb`
+- **MySQL / MariaDB**: `mysql://user:pass@localhost:3306/mydb`
+- **SQL Server**: `sqlserver://user:pass@localhost:1433/mydb`
+
+---
+
+## 2. Defining Schemas (DSL)
+
+Inside a `DATABASE` or `CRUD` block, use the `SCHEMA` directive to define your models.
+
+```hcl
+DATABASE "sqlite://data.db" [default]
+    NAME myapi
+
+    SCHEMA products DEFINE [icon=box]
+        FIELD name string [required]
+        FIELD price number [default=0]
+        FIELD category string [index]
+        
+        # Virtual field (computed)
+        FIELD fullName BEGIN
+            return this.name + " (" + this.category + ")";
+        END FIELD
+
+        # Hooks
+        HOOK onsave BEGIN
+            console.log("Saving product: " + this.name);
+        END HOOK
+    END SCHEMA
+END DATABASE
+```
+
+### Field Options
+- `type`: `string`, `number`, `boolean`, `int`, `float`, `date`, `datetime`, `geo`, `array`, `object`, `text`.
+- `required`: Boolean.
+- `index`: Creates a database index.
+- `unique`: Ensures uniqueness.
+- `default`: Default value.
+
+---
+
+## 3. JavaScript API — `require('db')`
+
+### Initialization
+```javascript
+const db = require('db'); // Uses the [default] connection
+// OR
+const myConn = db.get('myapi');
+```
+
+### Models and Documents
+```javascript
+const User = db.Model('User');
+
+// Create
+const user = await User.create({ name: 'Alice', age: 30 });
+
+// Find
+const users = await User.find({ age: { $gt: 18 } })
+    .sort('-age')
+    .limit(10)
+    .exec();
+
+// Update
+user.age = 31;
+await user.save();
+
+// Delete
+await user.remove();
+```
+
+### Query Operators
+The module supports a rich set of MongoDB-style operators:
+
+| Operator | Description |
+|---|---|
+| `$eq`, `$ne` | Equal / Not equal |
+| `$gt`, `$gte` | Greater than (or equal) |
+| `$lt`, `$lte` | Less than (or equal) |
+| `$in`, `$nin` | In / Not in list |
+| `$or`, `$and`, `$nor` | Logical union / intersection / negation |
+| `$exists` | Check if field is NULL |
+| `$regex` | Regular expression matching |
+| `$geoWithin` | Geospatial search (requires `geo` type) |
+
+---
+
+## 4. Admin UI and CMS
+
+If you define `SCHEMA` blocks with the `DEFINE` keyword, `http-server` automatically generates a secure Admin UI.
+
+### Admin Customization
+```hcl
+DATABASE "sqlite://cms.db"
+    ADMIN DEFINE
+        PAGE "/stats" [title="Analytics" icon=bar-chart] BEGIN
+            <div class="card">
+                <h2>Total Products: <?= db.Model('products').count() ?></h2>
+            </div>
+        END PAGE
+    END ADMIN
+END DATABASE
+```
+
+Access the Admin UI at `/_admin` (if mounted via `CRUD /api` in an HTTP block).

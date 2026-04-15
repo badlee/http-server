@@ -41,14 +41,16 @@ Ce document définit les tâches prioritaires pour l'évolution du projet.
 - [x] **[Sécurité]** Implémentation d'une couche de sécurité de niveau 4 (SYN/Accept pour TCP, Packet-level pour UDP) : directive `SECURITY` avec support `CONNECTION` (Rate, IP, Geo) et `GEOJSON`.
 - [x] **[Sécurité]** Protection par défaut (Baseline) de 100r/s (burst 10) appliquée globalement à TOUS les protocoles (TCP, UDP, HTTP, DTP).
 - [x] **[Sécurité]** Surcharge de la politique globale via l'argument `[default]` dans un bloc `SECURITY`.
+- [x] **[Sécurité]** Intégration du WAF Coraza (L7) avec support des directives `@WAF`, `@IP`, `@GEO`, `@BOT`, `@AUDIT`.
 - [x] Documentation complète de toutes les directives dans `doc/BINDER.md`, `doc/WAF.md`, `RULES.md`, `README.md`.
 - [x] Exemples de tests dans `examples/` : `test_all_features.bind`, `multiplex_test.bind`, `rewrite_test.bind`, `security_geojson_*.bind`, `security_default_override.bind`.
 
 ### 1b. Module de Paiement
 - [x] **[Technique]** Directive `PAYMENT` : intégration native Stripe, Mobile Money (MTN/Orange) et providers custom via DSL.
-- [x] **[Technique]** Opérations `CHARGE`, `VERIFY`, `REFUND`, `CHECKOUT`, `USSD` avec scripts JS inline/fichier.
-- [x] **[Technique]** Webhooks (`@PRE`/`@POST`) avec validation de signature.
-- [x] **[Technique]** API JavaScript `require('payment')` avec gestion multi-connexions.
+- [x] **[Technique]** Standard X402/Crypto : Intégration de paiements crypto via facilitation native.
+- [x] **[Technique]** Opérations `CHARGE`, `VERIFY`, `REFUND`, `CHECKOUT`, `USSD`/`PUSH` avec scripts JS inline/fichier.
+- [x] **[Technique]** Webhooks (`@PRE`/`@POST`) avec validation de signature et détection d'utilisateur dynamique.
+- [x] **[Technique]** API JavaScript `require('payment')` avec gestion multi-connexions et calculs automatiques.
 - [x] Documentation complète dans `doc/PAYMENT.md`.
 
 ### 2. Custom Logs (Vhost & Server Wrapper)

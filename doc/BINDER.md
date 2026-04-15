@@ -9,7 +9,11 @@ Le format `.bind` permet de définir des serveurs réseaux, des protocoles et du
 ```hcl
 REGISTER PROTOCOL [NAME] "[js_file]"   // Enregistre un protocole JS custom (optionnel, niveau fichier)
 
-[PROTOCOL] [address]                   // Groupe d'écoute (TCP, UDP, HTTP, HTTPS, MQTT...)
+DATABASE [provider_url]                // Connexion DB (SQLite, MySQL, Postgres)
+PAYMENT [provider_url]                 // Connexion Paiement (Stripe, MoMo, X402)
+SECURITY [name]                        // Profil de sécurité réutilisable
+
+[PROTOCOL] [address]                   // Groupe d'écoute (TCP, UDP, HTTP, HTTPS, MQTT, MAIL...)
 
     // -- Configuration & Environnement --
     ENV PREFIX [prefix]                // Préfixe pour les vars d'env (défaut: APP_)
@@ -173,7 +177,8 @@ END [PROTOCOL]
 La directive `DEFINE` permet de cibler n'importe quel constructeur et transformer la route courante en un parent qui englobera ses propres définitions enfants. 
 
 ```hcl
-DATABASE 'postgres://user:pass@localhost:5432/mydb'
+DATABASE 'postgres://user:pass@localhost:5432/mydb' [default]
+    NAME myapi
     SCHEMA user DEFINE
         FIELD name string [required]
         FIELD email string [required]
@@ -233,9 +238,11 @@ Cette directive est critique car elle est appliquée à **chaque acceptation de 
 SECURITY my_global_rules [default]
     CONNECTION RATE 100r/s 1s burst=10
     CONNECTION DENY "blacklist.txt"
+    GEOJSON restricted_zone "data/restricted.geojson"
+    CONNECTION ALLOW restricted_zone
 END SECURITY
 ```
-Pour plus de détails, voir [doc/WAF.md](WAF.md).
+Pour plus de détails, voir [doc/WAF.md](WAF.md) et [doc/SECURITY.md](SECURITY.md).
 
 ### Sécurité Multi-couches (`SECURITY`)
 
