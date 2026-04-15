@@ -162,14 +162,14 @@ type DirectiveConfig struct {
 	Args      Arguments         // Arguments on the opening line
 	Env       Arguments         // ENV values (keys __file_N hold file paths; __prefix holds prefix)
 	Configs   Arguments         // CONF + SET/DEF/DEL values
-	Routes    []*RouteConfig    // All custom directives declared inside this block
+	Routes    Routes            // All custom directives declared inside this block
 	AppConfig *config.AppConfig // Injected at runtime by the caller
 	BaseDir   string            // Absolute dir of the source .bind file
 	Auth      AuthConfigs       // AUTH directives
 }
 
-func (r DirectiveConfig) GetRoutes(route string) []*RouteConfig {
-	var out []*RouteConfig
+func (r DirectiveConfig) GetRoutes(route string) Routes {
+	var out Routes
 	for _, rc := range r.Routes {
 		if rc.Method == route {
 			out = append(out, rc)
@@ -222,7 +222,7 @@ type RouteConfig struct {
 	IsGroup     bool            // true for DEFINE groups
 	Middlewares []MiddlewareUse // @MW tokens on this line
 	Args        Arguments       // trailing [key=val …] arguments
-	Routes      []*RouteConfig  // child routes (IsGroup only)
+	Routes      Routes          // child routes (IsGroup only)
 }
 
 // ParseHandlerAsRoutes re-parses Handler as a route list.
@@ -279,6 +279,27 @@ func (r *RouteConfig) Content(cfg *DirectiveConfig) ([]byte, error) {
 	default:
 		return []byte(h), nil
 	}
+}
+
+type Routes []*RouteConfig
+
+func (r Routes) Get(key string) *RouteConfig {
+	for _, rc := range r {
+		if rc.Path == key {
+			return rc
+		}
+	}
+	return nil
+}
+
+func (r Routes) GetGroups() Routes {
+	var groups Routes
+	for _, rc := range r {
+		if rc.IsGroup {
+			groups = append(groups, rc)
+		}
+	}
+	return groups
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

@@ -17,6 +17,7 @@ type Query struct {
 	vm           *goja.Runtime
 	selectFields []string
 	omitFields   []string
+	preloads     []string
 }
 
 func NewQuery(model *Model, vm *goja.Runtime) *Query {
@@ -185,6 +186,11 @@ func (q *Query) Skip(n int) *Query {
 	return q
 }
 
+func (q *Query) Preload(association string) *Query {
+	q.preloads = append(q.preloads, association)
+	return q
+}
+
 func (q *Query) Select(fields string) *Query {
 	// "name age -password"
 	parts := strings.Split(fields, " ")
@@ -206,7 +212,12 @@ func (q *Query) Exec() ([]*Document, error) {
 	sliceType := reflect.SliceOf(structType)
 	slicePtr := reflect.New(sliceType)
 
-	if err := q.db.Find(slicePtr.Interface()).Error; err != nil {
+	db := q.db
+	for _, p := range q.preloads {
+		db = db.Preload(p)
+	}
+
+	if err := db.Find(slicePtr.Interface()).Error; err != nil {
 		return nil, err
 	}
 
@@ -229,7 +240,12 @@ func (q *Query) ExecOne() (*Document, error) {
 	structType := q.model.createStructType()
 	result := reflect.New(structType).Interface()
 
-	if err := q.db.First(result).Error; err != nil {
+	db := q.db
+	for _, p := range q.preloads {
+		db = db.Preload(p)
+	}
+
+	if err := db.First(result).Error; err != nil {
 		return nil, err
 	}
 
@@ -262,6 +278,10 @@ func (q *Query) ToJSObject(returnFirstOnly ...bool) goja.Value {
 	})
 	obj.Set("select", func(s string) goja.Value {
 		q.Select(s)
+		return obj
+	})
+	obj.Set("preload", func(s string) goja.Value {
+		q.Preload(s)
 		return obj
 	})
 
@@ -328,6 +348,16 @@ func (q *Query) ToJSObject(returnFirstOnly ...bool) goja.Value {
 
 func structToMap(val reflect.Value, selectFields []string, omitFields []string) map[string]interface{} {
 	data := make(map[string]interface{})
+	if val.Kind() == reflect.Ptr {
+		if val.IsNil() {
+			return nil
+		}
+		val = val.Elem()
+	}
+	if val.Kind() != reflect.Struct {
+		return data
+	}
+
 	typ := val.Type()
 	for i := 0; i < val.NumField(); i++ {
 		field := val.Field(i)
@@ -357,11 +387,43 @@ func structToMap(val reflect.Value, selectFields []string, omitFields []string) 
 				}
 
 				if allowed {
-					val := field.Interface()
-					data[fieldName] = val
+					data[fieldName] = serializeValue(field)
 				}
 			}
 		}
 	}
 	return data
+}
+
+func serializeValue(v reflect.Value) interface{} {
+	if !v.IsValid() {
+		return nil
+	}
+
+	switch v.Kind() {
+	case reflect.Ptr:
+		if v.IsNil() {
+			return nil
+		}
+		return serializeValue(v.Elem())
+	case reflect.Struct:
+		// Check if it's a time.Time or similar
+		if v.Type().String() == "time.Time" {
+			return v.Interface()
+		}
+		return structToMap(v, nil, nil)
+	case reflect.Slice, reflect.Array:
+		slice := make([]interface{}, v.Len())
+		for i := 0; i < v.Len(); i++ {
+			slice[i] = serializeValue(v.Index(i))
+		}
+		return slice
+	case reflect.Interface:
+		if v.IsNil() {
+			return nil
+		}
+		return serializeValue(v.Elem())
+	default:
+		return v.Interface()
+	}
 }

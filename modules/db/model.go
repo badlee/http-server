@@ -213,6 +213,10 @@ func (m *Model) Find(filter map[string]interface{}) ([]*Document, error) {
 }
 
 func (m *Model) createStructType() reflect.Type {
+	if m.NativeType != nil {
+		return m.NativeType
+	}
+
 	structFields := []reflect.StructField{
 		{
 			Name: "ID",
@@ -233,8 +237,106 @@ func (m *Model) createStructType() reflect.Type {
 
 	for fieldName, fieldSchema := range m.Schema.Paths {
 		goFieldName := toCamelCase(fieldName)
-		goFieldType := m.getGoType(fieldSchema.Type)
+		var goFieldType reflect.Type
 
+		if fieldSchema.Ref != "" {
+			// Handle Relationship
+			refParts := strings.Split(fieldSchema.Ref, ".")
+			targetName := refParts[0]
+			targetField := "id"
+			if len(refParts) > 1 {
+				targetField = refParts[1]
+			}
+
+			targetModel := m.conn.GetModels()[targetName]
+			// In case of circular dependency or forward reference, targetModel might be nil or its NativeType might be nil
+			var targetFieldSchema *SchemaType
+			if targetModel != nil {
+				if tfs, ok := targetModel.Schema.Paths[targetField]; ok {
+					targetFieldSchema = &tfs
+				}
+			}
+
+			// Base property type
+			if targetFieldSchema != nil {
+				goFieldType = m.getGoType(targetFieldSchema.Type)
+			} else if targetField == "id" {
+				goFieldType = reflect.TypeOf("")
+			} else {
+				goFieldType = reflect.TypeOf("") // Fallback
+			}
+
+			tag := fmt.Sprintf(`json:"%s" gorm:"column:%s;references:%s"`, fieldName, fieldName, targetField)
+			if fieldSchema.OnDelete != "" || fieldSchema.OnUpdate != "" {
+				constraint := ""
+				if fieldSchema.OnDelete != "" {
+					constraint += fmt.Sprintf("OnDelete:%s;", strings.ToUpper(fieldSchema.OnDelete))
+				}
+				if fieldSchema.OnUpdate != "" {
+					constraint += fmt.Sprintf("OnUpdate:%s;", strings.ToUpper(fieldSchema.OnUpdate))
+				}
+				tag += fmt.Sprintf(` gorm:"constraint:%s"`, constraint)
+			}
+
+			if fieldSchema.Has != "many" && fieldSchema.Has != "many2many" {
+				structFields = append(structFields, reflect.StructField{
+					Name: goFieldName,
+					Type: goFieldType,
+					Tag:  reflect.StructTag(tag),
+				})
+			}
+
+			// Add Shadow Association Field
+			assocName := toCamelCase(targetName)
+			if fieldSchema.Has == "many" || fieldSchema.Has == "many2many" {
+				assocName = toCamelCase(fieldName)
+			}
+
+			if assocName == goFieldName && fieldSchema.Has != "many" && fieldSchema.Has != "many2many" {
+				assocName += "Ref"
+			}
+
+			var assocType reflect.Type
+			if targetModel != nil && targetModel.NativeType != nil {
+				assocType = targetModel.NativeType
+			} else {
+				// Circular or forward reference: use interface{}
+				assocType = reflect.TypeOf((*interface{})(nil)).Elem()
+			}
+
+			assocTag := ""
+			if fieldSchema.Has == "many" {
+				if targetModel != nil && targetModel.NativeType != nil {
+					assocType = reflect.SliceOf(assocType)
+				} else {
+					assocType = reflect.TypeOf([]interface{}{})
+				}
+				assocTag = fmt.Sprintf(`gorm:"foreignKey:%s;references:ID"`, toCamelCase(targetField))
+			} else if fieldSchema.Has == "many2many" {
+				if targetModel != nil && targetModel.NativeType != nil {
+					assocType = reflect.SliceOf(assocType)
+				} else {
+					assocType = reflect.TypeOf([]interface{}{})
+				}
+				joinTable := fmt.Sprintf("%s_%s", strings.ToLower(m.Name), strings.ToLower(fieldName))
+				assocTag = fmt.Sprintf(`gorm:"many2many:%s"`, joinTable)
+			} else {
+				if targetModel != nil && targetModel.NativeType != nil {
+					assocType = reflect.PtrTo(assocType)
+				}
+				assocTag = fmt.Sprintf(`gorm:"foreignKey:%s;references:%s"`, goFieldName, toCamelCase(targetField))
+			}
+
+			structFields = append(structFields, reflect.StructField{
+				Name: assocName,
+				Type: assocType,
+				Tag:  reflect.StructTag(assocTag),
+			})
+			continue
+		}
+
+		// Normal Field
+		goFieldType = m.getGoType(fieldSchema.Type)
 		tag := fmt.Sprintf(`json:"%s" gorm:"column:%s"`, fieldName, fieldName)
 		if fieldSchema.Index || fieldSchema.Unique {
 			if fieldSchema.Unique {
@@ -251,7 +353,8 @@ func (m *Model) createStructType() reflect.Type {
 		})
 	}
 
-	return reflect.StructOf(structFields)
+	m.NativeType = reflect.StructOf(structFields)
+	return m.NativeType
 }
 
 func toCamelCase(fieldName string) string {

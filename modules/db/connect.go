@@ -100,6 +100,7 @@ func (conn *Connection) Model(name string, schema ...interface{}) *Model {
 		Name:   name,
 		Schema: schemaObj,
 		db:     conn.db,
+		conn:   conn,
 	}
 
 	// Auto-migration
@@ -121,6 +122,7 @@ func (conn *Connection) restoreModel(name string) *Model {
 		Name:   name,
 		Schema: schema,
 		db:     conn.db,
+		conn:   conn,
 	}
 }
 
@@ -155,6 +157,26 @@ func (conn *Connection) createSchemaFromMap(schemaMap map[string]interface{}) *S
 			if validate, exists := fieldDefMap["validate"]; exists {
 				if validateStr, ok := validate.(string); ok {
 					schemaType.Validate = validateStr
+				}
+			}
+			if ref, exists := fieldDefMap["ref"]; exists {
+				if refStr, ok := ref.(string); ok {
+					schemaType.Ref = refStr
+				}
+			}
+			if has, exists := fieldDefMap["has"]; exists {
+				if hasStr, ok := has.(string); ok {
+					schemaType.Has = hasStr
+				}
+			}
+			if onDelete, exists := fieldDefMap["delete"]; exists {
+				if delStr, ok := onDelete.(string); ok {
+					schemaType.OnDelete = delStr
+				}
+			}
+			if onUpdate, exists := fieldDefMap["update"]; exists {
+				if updStr, ok := onUpdate.(string); ok {
+					schemaType.OnUpdate = updStr
 				}
 			}
 		} else if typeStr, ok := fieldDef.(string); ok {

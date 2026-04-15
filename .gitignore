@@ -17,3 +17,7 @@ http-server
 *.db
 *.db-shm
 *.db-wal
+
+package.json
+package-lock.json
+.DS_Store

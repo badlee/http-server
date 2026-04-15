@@ -48,6 +48,40 @@ DATABASE "sqlite://data.db" [default]
 END DATABASE
 ```
 
+### 2.1 Relationships (Foreign Keys)
+You can link fields to other schemas using the `[Schema].[field]` syntax.
+
+```hcl
+DATABASE "sqlite://data.db"
+    SCHEMA User
+        FIELD name string
+    END SCHEMA
+
+    SCHEMA Profile
+        # 'has=one' is the default. GORM will create a 'user_id' column.
+        FIELD user_id User.id [delete=CASCADE update=CASCADE]
+        FIELD bio text
+    END SCHEMA
+
+    SCHEMA Order
+        # 'has=many' creates a virtual association to the target schema.
+        FIELD customer_id User.id [has=many]
+        FIELD amount number
+    END SCHEMA
+
+    SCHEMA User
+        # 'has=many2many' handles join tables automatically.
+        FIELD roles Role.id [has=many2many]
+    END SCHEMA
+END DATABASE
+```
+
+#### Relationship Options
+- `has`: `one` (default), `many`, `many2many`.
+  - Aliases: `one_to_one`, `one_to_many`, `many_to_many`.
+- `delete`: `CASCADE`, `SET NULL`, `RESTRICT`, `NO ACTION`.
+- `update`: `CASCADE`, `SET NULL`, `RESTRICT`, `NO ACTION`.
+
 ### Field Options
 - `type`: `string`, `number`, `boolean`, `int`, `float`, `date`, `datetime`, `geo`, `array`, `object`, `text`.
 - `required`: Boolean.
@@ -77,6 +111,12 @@ const user = await User.create({ name: 'Alice', age: 30 });
 const users = await User.find({ age: { $gt: 18 } })
     .sort('-age')
     .limit(10)
+    .preload('Profile') // Preload related documents
+    .exec();
+
+// Nested Preloading
+const orders = await User.find({})
+    .preload('Orders.Items')
     .exec();
 
 // Update

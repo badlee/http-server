@@ -23,6 +23,8 @@ MQTT is accessible via:
 
 ```hcl
 DATABASE "sqlite://mqtt_data.db" [default]
+    NAME "mqtt_db"
+END DATABASE
 
 SECURITY iot_shield
     CONNECTION RATE 100r/s 1s burst=10

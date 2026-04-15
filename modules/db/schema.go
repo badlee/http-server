@@ -3,6 +3,7 @@ package db
 import (
 	"fmt"
 	"http-server/plugins/js"
+	"reflect"
 	"strings"
 	"sync"
 
@@ -38,6 +39,10 @@ type SchemaType struct {
 	Index    bool        `json:"index,omitempty"`
 	Unique   bool        `json:"unique,omitempty"`
 	Validate string      `json:"validate,omitempty"` // Code JS de validation
+	Ref      string      `json:"ref,omitempty"`      // Lien vers un autre schéma [Schema].[field]
+	Has      string      `json:"has,omitempty"`      // 'one' or 'many'
+	OnDelete string      `json:"on_delete,omitempty"`
+	OnUpdate string      `json:"on_update,omitempty"`
 }
 
 type Item interface {
@@ -86,9 +91,11 @@ func NewSchemaItem(itemType, name, code string, args ...string) Item {
 
 // Model - Model Mongoose-like
 type Model struct {
-	Name   string
-	Schema *Schema
-	db     *gorm.DB
+	Name       string
+	Schema     *Schema
+	db         *gorm.DB
+	conn       *Connection
+	NativeType reflect.Type
 }
 
 func (m *Model) AddMethod(item Item) {

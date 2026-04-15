@@ -140,6 +140,10 @@ type FieldDef struct {
 	Default  interface{} `json:"default,omitempty"`
 	Index    bool        `json:"index,omitempty"`
 	Unique   bool        `json:"unique,omitempty"`
+	Ref      string      `json:"ref,omitempty"`
+	Has      string      `json:"has,omitempty"`
+	OnDelete string      `json:"on_delete,omitempty"`
+	OnUpdate string      `json:"on_update,omitempty"`
 }
 
 // HookSet holds optional JS code or file paths for each lifecycle event.

@@ -208,6 +208,10 @@ type DSLField struct {
 	Default  interface{}
 	Index    bool
 	Unique   bool
+	Ref      string
+	Has      string
+	OnDelete string
+	OnUpdate string
 }
 
 type DSLCrudSchema struct {

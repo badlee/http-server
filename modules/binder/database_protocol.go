@@ -6,6 +6,7 @@ import (
 	"log"
 	"net"
 	"net/url"
+	"slices"
 	"strconv"
 	"strings"
 
@@ -210,36 +211,65 @@ func (d *DatabaseDirective) parseSchema(conn *db.Connection, name string, routes
 
 		switch cmd {
 		case "FIELD":
-			fieldName := route.Path
-			if route.Inline {
-				// virtual field (computed from inline code)
-				deferred = append(deferred, deferredItem{"VIRTUAL", fieldName, code, ""})
-			} else {
-				fieldType := route.ContentType
-				if fieldType == "" {
-					fieldType = code
-				}
-				if t, ok := route.Args["type"]; ok {
-					fieldType = t
-				}
-				fieldMap := map[string]interface{}{
-					"type": fieldType,
-				}
-				// Parse [key=value,...] args
-				if len(route.Args) >= 0 {
-					for k, v := range route.Args {
-						if k == "type" {
-							continue
+				fieldName := route.Path
+				if route.Inline {
+					// virtual field (computed from inline code)
+					deferred = append(deferred, deferredItem{"VIRTUAL", fieldName, code, ""})
+				} else {
+					fType := fieldType(route)
+					fieldMap := map[string]interface{}{
+						"type": fType,
+					}
+
+					rawType := ""
+					if route.Handler != "" && !route.Inline {
+						rawType = strings.TrimSpace(route.Handler)
+					}
+					if route.ContentType != "" {
+						rawType = route.ContentType
+					}
+
+					refVal := route.Args.Get("ref")
+					if refVal == "" && strings.Contains(rawType, ".") {
+						refVal = rawType
+					}
+
+					if refVal != "" {
+						fieldMap["ref"] = refVal
+						fieldMap["type"] = "string" // Default type for the FK column
+
+						hasVal := route.Args.Get("has", "one")
+						if !slices.Contains([]string{"one", "many", "many2many", "many_to_many", "one_to_many", "one_to_one"}, hasVal) {
+							hasVal = "one"
 						}
-						if isBool(v) {
-							fieldMap[k] = isTrue(v)
-						} else {
-							fieldMap[k] = v
+						if hasVal == "many_to_many" {
+							hasVal = "many2many"
+						} else if hasVal == "one_to_many" {
+							hasVal = "many"
+						} else if hasVal == "one_to_one" {
+							hasVal = "one"
+						}
+						fieldMap["has"] = hasVal
+						fieldMap["delete"] = strings.ToUpper(route.Args.Get("delete", "SET NULL"))
+						fieldMap["update"] = strings.ToUpper(route.Args.Get("update", "CASCADE"))
+					}
+
+					// Parse other [key=value,...] args
+					if len(route.Args) >= 0 {
+						for k, v := range route.Args {
+							if k == "type" || k == "has" || k == "ref" || k == "delete" || k == "update" {
+								continue
+							}
+							if isBool(v) {
+								fieldMap[k] = isTrue(v)
+							} else {
+								fieldMap[k] = v
+							}
 						}
 					}
+
+					schemaMap[fieldName] = fieldMap
 				}
-				schemaMap[fieldName] = fieldMap
-			}
 		case "VIRTUAL":
 			deferred = append(deferred, deferredItem{"VIRTUAL", route.Path, code, ""})
 		case "HOOK":
@@ -466,6 +496,14 @@ func parseSchemaBlock(r *RouteConfig) crud.DSLCrudSchema {
 		cmd := strings.ToUpper(child.Method)
 		switch cmd {
 		case "FIELD":
+			rawType := ""
+			if child.Handler != "" && !child.Inline {
+				rawType = strings.TrimSpace(child.Handler)
+			}
+			if child.ContentType != "" {
+				rawType = child.ContentType
+			}
+
 			f := crud.DSLField{
 				Name:     child.Path,
 				Type:     fieldType(child),
@@ -473,6 +511,25 @@ func parseSchemaBlock(r *RouteConfig) crud.DSLCrudSchema {
 				Index:    child.Args.GetBool("index"),
 				Unique:   child.Args.GetBool("unique"),
 			}
+
+			if strings.Contains(rawType, ".") {
+				// Detect Relationship [Schema].[Field]
+				f.Ref = rawType
+				f.Has = child.Args.Get("has", "one")
+				if !slices.Contains([]string{"one", "many", "many2many", "many_to_many", "one_to_many", "one_to_one"}, f.Has) {
+					f.Has = "one"
+				}
+				if f.Has == "many_to_many" {
+					f.Has = "many2many"
+				} else if f.Has == "one_to_many" {
+					f.Has = "many"
+				} else if f.Has == "one_to_one" {
+					f.Has = "one"
+				}
+				f.OnDelete = strings.ToUpper(child.Args.Get("delete", "SET NULL"))
+				f.OnUpdate = strings.ToUpper(child.Args.Get("update", "CASCADE"))
+			}
+
 			if v := child.Args.Get("default"); v != "" {
 				f.Default = v
 			}
