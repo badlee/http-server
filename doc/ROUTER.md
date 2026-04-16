@@ -83,7 +83,7 @@ La première ligne du fichier doit contenir un en-tête `CRON` suivi d'une expre
 console.log("Running periodic cleanup: " + new Date());
 ```
 
-Si l'en-tête est absent, le fichier est exécuté une seule fois au démarrage (comportement identique à `_start.js`).
+Si l'en-tête est absent, le fichier n'est pas exécuter et emet un message d'erreur au démarrage.
 
 ### Syntaxe supportée
 - `*` : Toutes les valeurs.

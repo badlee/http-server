@@ -327,16 +327,8 @@ func FsRouter(cfgs ...RouterConfig) (fiber.Handler, error) {
 		filePath := cronFile // Capture pour la closure
 		expr := parseCronHeader(filePath)
 		if expr == "" {
-			// Pas de header CRON -> exécuter une fois au démarrage
-			if !cfg.AppConfig.Silent {
-				fmt.Println("FsRouter: running cron script as startup", filePath)
-			}
-			go func(file string) {
-				_, err := processor.New(filepath.Dir(file), nil, cfg.AppConfig).ExecuteFile(file)
-				if err != nil && !cfg.AppConfig.Silent {
-					fmt.Fprintf(os.Stderr, "FsRouter: cron startup error (%s): %v\n", file, err)
-				}
-			}(filePath)
+			// Pas de header CRON -> émettre un message d'erreur au démarrage
+			return nil, fmt.Errorf("FsRouter: cron script %s has no CRON header", filePath)
 		} else {
 			// Planifier la tâche cron
 			if !cfg.AppConfig.Silent {
