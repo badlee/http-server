@@ -97,15 +97,16 @@ func WSHandler(conn *fiberwebsocket.Conn, runner ...*ScriptedRunner) {
 	if len(runner) > 0 && runner[0] != nil {
 		r := runner[0]
 		scripted = NewRuntime(client, func(channel, data string) error {
-			// Publish to Hub with loop prevention
-			HubInstance.Publish(&Message{
-				Channel:   channel,
-				Data:      data,
-				Source:    "js",
-				SenderSID: client.ConnID,
-			})
+			// // Publish to Hub with loop prevention
+			// HubInstance.Publish(&Message{
+			// 	Channel:   channel,
+			// 	Data:      data,
+			// 	Source:    "js",
+			// 	SenderSID: client.ConnID,
+			// })
 			// Also deliver back to the socket for point-to-point
 			payload, _ := json.Marshal(Message{Channel: channel, Data: data})
+			println("SEND >>", string(payload))
 			return wsCtx.SafeWrite(fastwebsocket.TextMessage, payload)
 		}, func() {
 			cancel()
@@ -145,18 +146,24 @@ func WSHandler(conn *fiberwebsocket.Conn, runner ...*ScriptedRunner) {
 				if !ok {
 					return
 				}
+
 				if msg.Event == "heartbeat" {
 					// Ignoré : car le ping natif WS suffit
 					continue
 				}
-				
+
 				if scripted != nil && scripted.HasSub(msg.Channel) {
 					scripted.Emit("hub_message", msg)
 				} else {
+					if msg.SenderSID == client.ConnID {
+						// Ignoré : C'est l'expediteur
+						continue
+					}
 					payload, err := json.Marshal(msg) // Message est directement sérialisable
 					if err != nil {
 						continue
 					}
+					println("SEND <<", string(payload))
 					if err := wsCtx.SafeWrite(fastwebsocket.TextMessage, payload); err != nil {
 						return
 					}

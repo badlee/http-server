@@ -13,7 +13,7 @@
 *   **🛠️ Engine Database/CRUD Unifié & Admin UI**  
     Basculez en mode **Headless CMS** instantanément. Le module **DATABASE** unifie désormais le moteur CRUD et les schémas dynamiques. Il génère automatiquement vos API REST et une interface d'administration temps-réel (propulsée par HTMX + SSE), gérant nativement les relations (`has=one`, `many`, `many2many`) et les migrations différées sécurisées (Dual Struct).
     
-*   **📡 Hub Realtime Massivement Scalable (+1M de clients)**  
+*   **📡 Hub Realtime Massivement Scalable (+100k connexionsde clients)**  
     Le cœur du système : un **Sharded Hub** v3 ultra-performant capable de gérer **plus d'un million de clients simultanément**. Support natif et interopérable de **SSE**, **WebSocket**, **MQTT 5.0** et **Socket.IO**. Grâce au scripting JS événementiel unifié (`onMessage`, `onClose`), gérez votre logique temps-réel avec une simplicité déconcertante, tout en bénéficiant de protections avancées contre les boucles d'écho infinies et d'une priorité stricte pour les événements de cycle de vie.
     
 *   **🛡️ Sentinelle de Sécurité intégrée**  
@@ -21,7 +21,7 @@
 
 ## Architecture & Modules
 - **Binder (`modules/binder`)** : Multiplexage de protocoles (HTTP, DTP, MQTT, JS custom) sur un même port via des fichiers `.bind`.
-- **Temps-Réel (`modules/sse`)** : Hub SSE/WS/MQTT/IO sharded haute performance (1M+ connexions).
+- **Temps-Réel (`modules/sse`)** : Hub SSE/WS/MQTT/IO sharded haute performance (100k+ connexions).
 - **Base de Données (`modules/db` & `modules/crud`)** : Moteur unifié Mongoose-like (GORM) avec support des relations, schémas dynamiques et migrations "Dual Struct" anti-panique.
 - **Paiement (`modules/binder/payment`)** : Intégration unifée Stripe, Mobile Money et Crypto (X402).
 - **Sécurité (`modules/security`)** : Moteur de filtrage L4 et pare-feu applicatif (WAF).
@@ -38,7 +38,7 @@
 | **Security Audit** | **Signé (HMAC Chain)** | Texte Simple | Texte Simple |
 | **Scripting Logic** | **JavaScript Natif (Isolé)** | Lua (Complexe) / NJS | PHP/C (Interpréteur ext) |
 | **Géo-fencing** | **GeoJSON, GéoIP et Plus Code** | GéoIP (Pays uniquement) | GéoIP (Pays uniquement) |
-| **Real-time Hub** | **Natif (+1M Connexions)** | Plugins tiers (Nchan) | Support minimal |
+| **Real-time Hub** | **Natif (+100k connexionsConnexions)** | Plugins tiers (Nchan) | Support minimal |
 | **IoT Integration** | **DTP & MQTT Unifié** | Websocket simple | Plugins lourds |
 | **Dev Experience** | **Hot-reload & FsRouter** | Configuration Statique | Configuration Statique |
 

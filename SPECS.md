@@ -8,7 +8,7 @@ Ce document définit les tâches prioritaires pour l'évolution du projet.
 - [x] Implémentation de la logique de Binder pour les protocoles de base.
 - [x] Support des Binders écrits en JavaScript pour une extensibilité maximale (Approach: isolated functions & Node-style Duplex).
 - [x] **[Technique]** Implémenter la méthode `Handle()` dans `JSDirective` pour permettre le traitement des sockets en JS.
-- [x] **[Technique]** Refonte de l'architecture SSE avec un système de Sharded Hub et Ring Buffers pour haute performance (1M+ connexions).
+- [x] **[Technique]** Refonte de l'architecture SSE avec un système de Sharded Hub et Ring Buffers pour haute performance (100k+ connexions).
 - [x] **[Technique]** Intégration du support WebSocket bidirectionnel couplé au Hub SSE.
 - [x] **[Technique]** Intégrer la nouvelle architecture SSE/WS dans `HTTPDirective` pour supporter les événements dans les routes Binder.
 - [x] **[Technique]** Directive `WORKER [js_file] [KEY=VALUE...]` : exécute un script JS en arrière-plan avec injection des `config` (args worker) et `settings` (directives `SET`).
@@ -64,7 +64,7 @@ Ce document définit les tâches prioritaires pour l'évolution du projet.
 - [x] Tests unitaires pour le parser Binder (`modules/binder/parser_test.go`).
 - [x] Suite de tests exhaustifs pour les fonctionnalités de Virtual Hosting.
 - [x] Tests de robustesse pour le multiplexage (détection de protocoles, timeouts).
-- [x] Tests de charge et de performance (jusqu'à 1M+ connexions SSE/WS).
+- [x] Tests de charge et de performance (jusqu'à 100k+ connexions SSE/WS).
 - [x] Validation intégrale de l'API Socket.IO native (`IO`) : Tests de routing HTTP (HTTP 426 Upgrade), registre bidirectionnel et propagation JSON Hub.
 - [x] **[CRUD]** Propagation en temps réel de toute l'activité via SSE (channels hiérarchiques).
 - [x] **[CRUD]** Support des diffs et snapshots `prev` dans les événements SSE `update`.

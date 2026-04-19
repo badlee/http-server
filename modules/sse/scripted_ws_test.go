@@ -2,6 +2,7 @@ package sse
 
 import (
 	"encoding/json"
+	"io"
 	"net"
 	"testing"
 	"time"
@@ -25,10 +26,15 @@ func parseWSResponse(t *testing.T, raw []byte) ResponseMsg {
 func readWSMsg(t *testing.T, conn *fastwebsocket.Conn) []byte {
 	t.Helper()
 	conn.SetReadDeadline(time.Now().Add(2 * time.Second))
-	_, p, err := conn.ReadMessage()
+	_, r, err := conn.NextReader()
 	if err != nil {
 		t.Fatalf("ReadMessage failed: %v", err)
 	}
+	p, err := io.ReadAll(r)
+	if err != nil {
+		t.Fatalf("ReadMessage failed: %v", err)
+	}
+	println("READ", string(p))
 	return p
 }
 
@@ -95,7 +101,7 @@ func TestScriptedWSHandler(t *testing.T) {
 		t.Errorf("got %q, want %q", r.Data, "pong")
 	}
 
-	// 1b. hello → publish → subscribe → send
+	// // 1b. hello → publish → subscribe → send
 	sendWSJSON(t, conn, Message{Data: "hello"})
 	r = parseWSResponse(t, readWSMsg(t, conn))
 	if r.Data != "chan_data: echo: hello" {

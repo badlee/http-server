@@ -207,7 +207,7 @@ func (r *Runtime) Emit(event string, data any) {
 	if r.client.ctx.Err() != nil {
 		return
 	}
-	// queue for execution inside the eventLoop's goroutine 
+	// queue for execution inside the eventLoop's goroutine
 	select {
 	case r.eventChan <- jsEvent{Name: event, Data: data}:
 	default:
@@ -329,10 +329,8 @@ func (r *Runtime) dispatchEvent(vm *goja.Runtime, evt jsEvent) {
 			}
 		}
 
-		// Prevent infinite loops: ignore messages sent by this client
-		if msg.SenderSID == r.client.ConnID {
-			return
-		}
+		// Check if this message was sent by this client (loop prevention target)
+		selfMessage := msg.SenderSID != "" && msg.SenderSID == r.client.ConnID
 
 		mObj := vm.NewObject()
 		mObj.Set("id", msg.ID)
@@ -345,13 +343,15 @@ func (r *Runtime) dispatchEvent(vm *goja.Runtime, evt jsEvent) {
 		subsCbs := append([]goja.Callable{}, r.subs[msg.Channel]...)
 		r.mu.RUnlock()
 
-		// General listeners
-		for _, cb := range callbacks {
-			if _, err := cb(goja.Null(), mObj); err != nil {
-				log.Printf("realtime message error: %v", err)
+		// General listeners: skip self-messages to prevent onMessage→publish→onMessage loops
+		if !selfMessage {
+			for _, cb := range callbacks {
+				if _, err := cb(goja.Null(), mObj); err != nil {
+					log.Printf("realtime message error: %v", err)
+				}
 			}
 		}
-		// Subscription listeners
+		// Subscription listeners: always fire — the client explicitly subscribed
 		for _, cb := range subsCbs {
 			if _, err := cb(goja.Undefined(), mObj); err != nil {
 				log.Printf("realtime sub error [%s]: %v", msg.Channel, err)
@@ -380,7 +380,6 @@ func (r *Runtime) dispatchEvent(vm *goja.Runtime, evt jsEvent) {
 		}
 	}
 }
-
 
 // Global script cache (compiled only once)
 var scriptCache sync.Map

@@ -348,10 +348,6 @@ func (s *Shard) run() {
 				if c.closed.Load() {
 					continue
 				}
-				// Loop prevention: don't send back to the same connection instance
-				if msg.SenderSID != "" && msg.SenderSID == c.ConnID {
-					continue
-				}
 				select {
 				case c.message <- msg:
 				default:

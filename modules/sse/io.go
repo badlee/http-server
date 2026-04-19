@@ -132,6 +132,8 @@ type sioMessage struct {
 
 // ==================== HANDLER ====================
 
+var sioInitOnce sync.Once
+
 // SIOHandler retourne un handler Fiber enregistrant les événements Socket.IO
 // et connectant chaque socket au Hub SSE.
 func SIOHandler(cfg ...any) func(fiber.Ctx) error {
@@ -147,9 +149,10 @@ func SIOHandler(cfg ...any) func(fiber.Ctx) error {
 		}
 	}
 
-	// ---- Connexion ----
-	socketio.On(socketio.EventConnect, func(ep *socketio.EventPayload) {
-		kws := ep.Kws
+	sioInitOnce.Do(func() {
+		// ---- Connexion ----
+		socketio.On(socketio.EventConnect, func(ep *socketio.EventPayload) {
+			kws := ep.Kws
 		uuid := kws.UUID
 
 		// Résoudre le sid
@@ -191,26 +194,25 @@ func SIOHandler(cfg ...any) func(fiber.Ctx) error {
 			hubClient.channels = append(hubClient.channels, ch)
 		}
 
+		var requestRunner *ScriptedRunner
+		if r, ok := kws.Locals("sio_runner").(*ScriptedRunner); ok {
+			requestRunner = r
+		}
+
 		entry := &sioEntry{
 			hubClient: hubClient,
 			cancel:    hubCancel,
 			channels:  append([]string{}, initialChannels...),
-			scripted:  runner != nil,
+			scripted:  requestRunner != nil,
 		}
 		sioReg.add(uuid, entry)
 
 		var scripted *Runtime
-		if runner != nil {
+		if requestRunner != nil {
 			scripted = NewRuntime(hubClient, func(channel, data string) error {
-				HubInstance.Publish(&Message{
-					Channel:   channel,
-					Event:     "message",
-					Data:      data,
-					Source:    "js",
-					SenderSID: hubClient.ConnID,
-				})
-				// Also emit back to the socket for point-to-point
+				// Point-to-point: send directly to this socket only
 				raw, _ := json.Marshal(sioMessage{Channel: channel, Event: "message", Data: data})
+				// log.Printf("SEND SIO %s: %s", uuid, string(raw))
 				return socketio.EmitTo(uuid, raw)
 			}, func() {
 				hubCancel()
@@ -218,7 +220,7 @@ func SIOHandler(cfg ...any) func(fiber.Ctx) error {
 				kws.Close()
 			}, kws)
 
-			if err := scripted.Run(runner.Code, ".", runner.Config); err != nil {
+			if err := scripted.Run(requestRunner.Code, ".", requestRunner.Config); err != nil {
 				log.Printf("IO JS runtime error: %v", err)
 			}
 			entry.runtime = scripted
@@ -365,8 +367,9 @@ func SIOHandler(cfg ...any) func(fiber.Ctx) error {
 			entry.runtime.Shutdown()
 		}
 	})
+	}) // Fin de sync.Once
 
-	return socketio.New(func(kws *socketio.Websocket) {
+	sioApp := socketio.New(func(kws *socketio.Websocket) {
 		// socketio.New gère la boucle de lecture interne et fire les événements On().
 		// Le callback reçu ici s'exécute pendant toute la durée de la connexion.
 		// On bloque jusqu'à ce que le hub client soit fermé (déconnexion).
@@ -374,6 +377,13 @@ func SIOHandler(cfg ...any) func(fiber.Ctx) error {
 			<-entry.hubClient.ctx.Done()
 		}
 	}, wsCfg)
+
+	return func(c fiber.Ctx) error {
+		if runner != nil {
+			c.Locals("sio_runner", runner)
+		}
+		return sioApp(c)
+	}
 }
 
 // ==================== API PUBLIQUE ====================

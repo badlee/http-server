@@ -25,7 +25,9 @@ func startSIOServer(t *testing.T, runner *ScriptedRunner) (addr string, shutdown
 	if err != nil {
 		t.Fatal(err)
 	}
-	go app.Listener(ln)
+	go app.Listener(ln, fiber.ListenConfig{
+		DisableStartupMessage: true,
+	})
 	return ln.Addr().String(), func() { app.Shutdown() }
 }
 

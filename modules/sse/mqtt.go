@@ -3,6 +3,7 @@ package sse
 // mqtt.go — Broker MQTT 3.1.1/5.0 intégré au Hub SSE, propulsé par mochi-mqtt.
 
 import (
+	"bytes"
 	"context"
 	"crypto/subtle"
 	"errors"
@@ -47,9 +48,11 @@ type MQTTConfig struct {
 // ─────────────────────────────────────────────────────────────────────────────
 
 type MQTTServer struct {
-	server *mqtt.Server
-	bridge *mqttWSListener
-	hookFn func(*Message)
+	server   *mqtt.Server
+	bridge   *mqttWSListener
+	hookFn   func(*Message)
+	muRT     sync.RWMutex
+	runtimes []*Runtime // registered JS runtimes for lifecycle forwarding
 }
 
 func (ms *MQTTServer) Server() *mqtt.Server { return ms.server }
@@ -89,10 +92,11 @@ func NewMQTTServer(cfg MQTTConfig, opts *mqtt.Options) (*MQTTServer, error) {
 		return nil, err
 	}
 
-	if cfg.OnConnect != nil || cfg.OnDisconnect != nil {
-		if err := srv.AddHook(&lifecycleHook{cfg: cfg}, nil); err != nil {
-			return nil, err
-		}
+	// Create the lifecycle hook with a back-pointer that will be set after
+	// MQTTServer creation, so disconnect events can reach JS runtimes.
+	lhook := &lifecycleHook{cfg: cfg}
+	if err := srv.AddHook(lhook, nil); err != nil {
+		return nil, err
 	}
 
 	bridge := newMQTTWSListener("fiber-ws")
@@ -143,6 +147,8 @@ func NewMQTTServer(cfg MQTTConfig, opts *mqtt.Options) (*MQTTServer, error) {
 	}()
 
 	ms := &MQTTServer{server: srv, bridge: bridge}
+	// Set the back-pointer so the lifecycle hook can forward disconnect events
+	lhook.server = ms
 
 	ms.hookFn = func(msg *Message) {
 		if msg.Source != "mqtt" {
@@ -161,7 +167,7 @@ func (ms *MQTTServer) ServeConn(conn net.Conn) {
 		return
 	default:
 	}
-	
+
 	go func() {
 		// Use a local ID or the remote address for logging
 		err := ms.server.EstablishConnection("tcp-proxy", conn)
@@ -195,6 +201,8 @@ func MQTTUpgradeMiddleware(c fiber.Ctx) error {
 func MQTTHandler(cfg MQTTConfig, runner ...*ScriptedRunner) func(*websocket.Conn) {
 	return func(ws *websocket.Conn) {
 		// Unified bridge for Fiber WebSocket/MQTT
+		wsCtx := newWSNetConn(ws)
+		_ = wsCtx // prevent error
 		sid := ws.Params("id", ws.Query("id", "mqtt-client"))
 		hubCtx, hubCancel := context.WithCancel(context.Background())
 		defer hubCancel()
@@ -208,7 +216,7 @@ func MQTTHandler(cfg MQTTConfig, runner ...*ScriptedRunner) func(*websocket.Conn
 		}
 
 		var scripted *Runtime
-		
+
 		// Unified Cleanup
 		defer func() {
 			if scripted != nil {
@@ -229,13 +237,28 @@ func MQTTHandler(cfg MQTTConfig, runner ...*ScriptedRunner) func(*websocket.Conn
 		if len(runner) > 0 && runner[0] != nil {
 			r := runner[0]
 			scripted = NewRuntime(hubClient, func(topic, data string) error {
-				HubInstance.Publish(&Message{
-					Channel:   topic,
-					Data:      data,
-					Source:    "js",
-					SenderSID: hubClient.ConnID,
-				})
-				return nil
+				// HubInstance.Publish(&Message{
+				// 	Channel:   topic,
+				// 	Data:      data,
+				// 	Source:    "js",
+				// 	SenderSID: hubClient.ConnID,
+				// })
+				// Point-to-point: deliver directly to the socket
+				var buf *bytes.Buffer = &bytes.Buffer{}
+				(&packets.Packet{
+					FixedHeader: packets.FixedHeader{
+						Type:   packets.Publish,
+						Qos:    byte(0),
+						Dup:    false,
+						Retain: false,
+					},
+					Created:   time.Now().Unix(),
+					TopicName: topic,
+					Payload:   []byte(data),
+					Origin:    "js",
+				}).PublishEncode(buf)
+				_, err := wsCtx.Write(buf.Bytes())
+				return err
 			}, func() {
 				ws.Close()
 			}, ws)
@@ -285,7 +308,24 @@ func MQTTHandler(cfg MQTTConfig, runner ...*ScriptedRunner) func(*websocket.Conn
 		} else {
 			// give the shared server a moment to be truly ready
 		}
-		
+
+		// Register the JS runtime with the server for lifecycle forwarding
+		if scripted != nil {
+			ms.muRT.Lock()
+			ms.runtimes = append(ms.runtimes, scripted)
+			ms.muRT.Unlock()
+			defer func() {
+				ms.muRT.Lock()
+				for i, rt := range ms.runtimes {
+					if rt == scripted {
+						ms.runtimes = append(ms.runtimes[:i], ms.runtimes[i+1:]...)
+						break
+					}
+				}
+				ms.muRT.Unlock()
+			}()
+		}
+
 		if localServer {
 			defer ms.Close()
 		}
@@ -319,7 +359,7 @@ func (l *mqttWSListener) serve(ws *websocket.Conn) {
 	nc := newWSNetConn(ws)
 	select {
 	case l.connCh <- nc:
-		<-nc.done 
+		<-nc.done
 	case <-l.done:
 		ws.Close()
 	}
@@ -369,8 +409,8 @@ func (l *mqttWSListener) Close(closeClients listeners.CloseFn) {
 
 type wsNetConn struct {
 	ws   *websocket.Conn
-	buf  []byte        
-	done chan struct{} 
+	buf  []byte
+	done chan struct{}
 	once sync.Once
 }
 
@@ -489,7 +529,8 @@ func (h *hubHook) OnPublish(cl *mqtt.Client, pk packets.Packet) (packets.Packet,
 
 type lifecycleHook struct {
 	mqtt.HookBase
-	cfg MQTTConfig
+	cfg    MQTTConfig
+	server *MQTTServer // back-pointer for runtime lifecycle forwarding
 }
 
 func (h *lifecycleHook) ID() string { return "binder-lifecycle" }
@@ -505,6 +546,17 @@ func (h *lifecycleHook) OnConnect(cl *mqtt.Client, pk packets.Packet) error {
 func (h *lifecycleHook) OnDisconnect(cl *mqtt.Client, err error, expire bool) {
 	if h.cfg.OnDisconnect != nil {
 		h.cfg.OnDisconnect(cl.ID, err == nil)
+	}
+	// Forward disconnect event to all registered JS runtimes
+	if h.server != nil {
+		h.server.muRT.RLock()
+		for _, rt := range h.server.runtimes {
+			select {
+			case rt.lifecycle <- jsEvent{Name: "close", Data: cl.ID}:
+			default:
+			}
+		}
+		h.server.muRT.RUnlock()
 	}
 }
 
