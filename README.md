@@ -33,7 +33,7 @@ Oubliez la complexité des infrastructures Docker et micro-services : déployez 
 | Docker, Kubernetes, 15 services à orchestrer | **Un seul binaire** (50-70 Mo) |
 | `npm install` + 500 dépendances | **Zéro dépendance**, zéro `node_modules` |
 | Builds de 5 minutes, configurations fragiles | **Démarrage instantané** (10 ms), hot-reload |
-| Perte des données en mode "simple" | **Persistance réelle** (dossier `./.data`) |
+| Perte des données en mode "simple" | **Persistance réelle** (dossier `./.data` créé automatiquement) |
 | Sécurité à ajouter (WAF, rate limiting, HTTPS) | **Sentinelle 5 couches** intégrée |
 | Séparer API, base, realtime, MQTT, paiements | **Tout est unifié**, ponts automatiques |
 
@@ -55,7 +55,7 @@ Basculez en mode **Headless CMS** instantanément. Définissez vos schémas en D
 - Une **interface d'administration temps-réel** (HTMX + SSE)
 - Des **migrations sécurisées** (Dual Struct)
 
-**En mode simple (`./beba`)** : la base de données SQLite et les sessions sont **persistantes** et stockées dans le dossier `./.data`. Redémarrez votre serveur, vos données restent intactes.
+**En mode simple (`./beba`)** : le dossier `./.data` est **généré automatiquement** dès le premier lancement. Contrairement à un simple serveur statique, Beba offre une **persistance réelle** (SQLite, Sessions, Cache). Redémarrez votre serveur autant que vous voulez, vos données restent intactes.
 
 ### Hub realtime massivement scalable
 Le cœur du système : un hub de messagerie haute performance capable de gérer **plus d'un million de clients simultanés**.
@@ -207,7 +207,8 @@ chmod +x beba-linux-amd64
 - Broker MQTT TCP sur port 1883
 - Routage par fichiers (FsRouter) actif (`./pages/` par défaut)
 
-> Les données sont persistantes : vous pouvez redémarrer le serveur, vos collections, utilisateurs et documents restent intacts.
+> [!IMPORTANT]
+> **Zéro configuration, mais persistance réelle** : Le dossier `./.data` est créé automatiquement au démarrage pour stocker vos bases SQLite et vos sessions. C'est cette gestion native de la donnée qui différencie Beba d'un simple serveur de fichiers éphémère : vos données survivent aux redémarrages sans aucun réglage complexe.
 
 ### 2. Avec un fichier de configuration `.bind`
 
