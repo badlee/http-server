@@ -4,7 +4,7 @@
 # Tester avec: curl -k https://your-real-domain.com/
 #
 # Commande de test en local pour vérifier le démarrage:
-#   ./http-server --bind-file examples/test_ssl_lets_encrypt.bind
+#   ./beba --bind-file examples/test_ssl_lets_encrypt.bind
 # (Vérifier que le serveur démarre sans erreur de parse sur port 443 et port 80 pour ACME)
 
 HTTPS 0.0.0.0:443

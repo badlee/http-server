@@ -9,9 +9,9 @@ import (
 	"regexp"
 	"strings"
 
-	"http-server/modules"
-	"http-server/plugins/config"
-	"http-server/plugins/require"
+	"beba/modules"
+	"beba/plugins/config"
+	"beba/plugins/require"
 
 	"github.com/PuerkitoBio/goquery"
 	"github.com/cbroglie/mustache"

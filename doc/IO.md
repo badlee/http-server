@@ -1,6 +1,6 @@
 # Socket.IO Module (Method "IO")
 
-Le `http-server` intègre un support Socket.IO qui est entièrement unifié avec le Hub SSE/WS. Cela permet une communication temps-réel bidirectionnelle entre les clients Socket.IO et tous les autres protocoles supportés (SSE, WebSockets classiques, MQTT).
+Le `beba` intègre un support Socket.IO qui est entièrement unifié avec le Hub SSE/WS. Cela permet une communication temps-réel bidirectionnelle entre les clients Socket.IO et tous les autres protocoles supportés (SSE, WebSockets classiques, MQTT).
 
 ## 🚀 Configuration Binder
 

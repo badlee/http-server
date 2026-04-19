@@ -185,8 +185,8 @@ END [PROTOCOL]
 
 ## Exemples Avancés
 
-### Exemple d'Imbrication de Routes (`DEFINE`)
-La directive `DEFINE` permet de cibler n'importe quel constructeur et transformer la route courante en un parent qui englobera ses propres définitions enfants. 
+### Exemple d'Imbrication de Directives (`DEFINE`)
+La directive `DEFINE` permet de cibler n'importe quel constructeur et transformer la directive courante en un parent qui englobera ses propres directive enfants. 
 
 ```hcl
 DATABASE 'postgres://user:pass@localhost:5432/mydb' [default]
@@ -397,9 +397,9 @@ SSL key.pem cert.pem
 Délègue les requêtes entrantes à un serveur distant.
 
 ```hcl
-PROXY /api/realtime http://backend:8080         // Proxy Intelligent (Gère HTTP et WebSocket dynamiquement)
+PROXY /api/realtime http://backend:8080             // Proxy Intelligent (Gère HTTP et WebSocket dynamiquement)
 PROXY WS /api/realtime/ws ws://socket-server:9000   // Proxy strictement WebSocket
-PROXY HTTP /rpc http://rpc-service:7070// Proxy strictement HTTP
+PROXY HTTP /rpc http://rpc-service:7070             // Proxy strictement HTTP
 ```
 
 **Comportement Intelligent** :

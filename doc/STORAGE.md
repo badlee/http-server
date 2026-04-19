@@ -177,7 +177,7 @@ session.save();
 
 - **File Storage**: Persistent SurrealDB data is stored in the `./data/sessions.db` directory.
 - **Auto-Initialization**: The module initializes SurrealDB automatically upon the first use.
-- **Namespacing**: SurrealDB data is under the `http-server` namespace.
+- **Namespacing**: SurrealDB data is under the `beba` namespace.
 
 ---
 

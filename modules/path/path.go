@@ -4,7 +4,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"http-server/modules"
+	"beba/modules"
 
 	"github.com/dop251/goja"
 )

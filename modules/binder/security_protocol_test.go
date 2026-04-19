@@ -1,8 +1,8 @@
 package binder
 
 import (
-	"http-server/plugins/config"
-	"http-server/plugins/httpserver"
+	"beba/plugins/config"
+	"beba/plugins/httpserver"
 	"testing"
 )
 

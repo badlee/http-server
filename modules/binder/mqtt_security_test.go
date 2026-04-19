@@ -5,9 +5,9 @@ import (
 	"strings"
 	"testing"
 
-	"http-server/modules/security"
-	"http-server/plugins/config"
-	"http-server/plugins/httpserver"
+	"beba/modules/security"
+	"beba/plugins/config"
+	"beba/plugins/httpserver"
 )
 
 // mockTestConn is a simple struct mimicking net.Conn that allows mocking RemoteAddr securely.

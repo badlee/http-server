@@ -7,8 +7,8 @@ import (
 	"os"
 	"path/filepath"
 
-	"http-server/plugins/httpserver"
-	"http-server/processor"
+	"beba/plugins/httpserver"
+	"beba/processor"
 
 	"github.com/dop251/goja"
 )

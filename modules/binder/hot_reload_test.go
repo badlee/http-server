@@ -1,7 +1,7 @@
 package binder
 
 import (
-	"http-server/plugins/config"
+	"beba/plugins/config"
 	"net"
 	"os"
 	"path/filepath"

@@ -1,7 +1,7 @@
 package security
 
 import (
-	"http-server/plugins/httpserver"
+	"beba/plugins/httpserver"
 	"log"
 	"net"
 	"os"

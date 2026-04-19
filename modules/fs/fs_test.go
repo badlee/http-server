@@ -1,7 +1,7 @@
 package fs
 
 import (
-	"http-server/processor"
+	"beba/processor"
 	"path/filepath"
 	"testing"
 )

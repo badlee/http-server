@@ -1,7 +1,7 @@
 package db
 
 import (
-	"http-server/processor"
+	"beba/processor"
 	"net/url"
 	"strings"
 	"testing"

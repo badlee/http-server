@@ -1,6 +1,6 @@
 # Virtual Hosts (Vhost)
 
-Le mode **Virtual Host** permet d'héberger plusieurs sites web indépendants sur une seule instance `http-server`. Chaque site dispose de son propre processus, son propre environnement JavaScript, et son propre répertoire racine.
+Le mode **Virtual Host** permet d'héberger plusieurs sites web indépendants sur une seule instance `beba`. Chaque site dispose de son propre processus, son propre environnement JavaScript, et son propre répertoire racine.
 
 ---
 
@@ -21,9 +21,9 @@ Le mode **Virtual Host** permet d'héberger plusieurs sites web indépendants su
 ## Activation
 
 ```bash
-./http-server ./vhosts --vhost
-./http-server ./vhosts -V             # shorthand
-./http-server ./vhosts --vhost --port 8080
+./beba ./vhosts --vhost
+./beba ./vhosts -V             # shorthand
+./beba ./vhosts --vhost --port 8080
 ```
 
 Le flag `--vhost` (ou `-V`) active le mode Virtual Host. Le premier argument positionnel désigne le **répertoire parent** contenant les dossiers des vhosts.
@@ -246,7 +246,7 @@ END HTTP
 EOF
 
 # Lancer
-./http-server vhosts --vhost --port 8080
+./beba vhosts --vhost --port 8080
 
 # Tester
 curl -H "Host: mon-site.local" http://localhost:8080/
@@ -255,7 +255,7 @@ curl -H "Host: mon-site.local" http://localhost:8080/
 ### Multi-sites sur un seul port
 
 ```bash
-./http-server sites/ --vhost --port 80
+./beba sites/ --vhost --port 80
 ```
 
 ```

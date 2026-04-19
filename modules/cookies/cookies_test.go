@@ -1,7 +1,7 @@
 package cookies
 
 import (
-	"http-server/processor"
+	"beba/processor"
 	"testing"
 
 	"github.com/gofiber/fiber/v3"

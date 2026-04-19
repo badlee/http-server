@@ -1,6 +1,6 @@
 # Exemple : Virtual Hosts
 
-Cet exemple montre comment héberger plusieurs sites sur une seule instance `http-server` grâce au mode **Virtual Host**.
+Cet exemple montre comment héberger plusieurs sites sur une seule instance `beba` grâce au mode **Virtual Host**.
 
 ## Structure
 
@@ -24,7 +24,7 @@ vhosts/
 
 ```bash
 # Depuis la racine du projet
-./http-server examples/vhosts --vhost --port 8080
+./beba examples/vhosts --vhost --port 8080
 ```
 
 Le processus master :

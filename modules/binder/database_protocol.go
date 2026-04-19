@@ -10,9 +10,9 @@ import (
 	"strconv"
 	"strings"
 
-	"http-server/modules/crud"
-	"http-server/modules/db"
-	"http-server/processor"
+	"beba/modules/crud"
+	"beba/modules/db"
+	"beba/processor"
 )
 
 const defaultName = db.DefaultConnName

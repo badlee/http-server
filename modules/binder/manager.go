@@ -5,7 +5,7 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
-	"http-server/plugins/config"
+	"beba/plugins/config"
 	"io"
 	"log"
 	"net"
@@ -17,15 +17,15 @@ import (
 	"time"
 
 	// autoload js modules
-	_ "http-server/modules/console"
-	_ "http-server/modules/cookies"
-	_ "http-server/modules/dtp"
-	_ "http-server/modules/fetch"
-	_ "http-server/modules/fs"
-	_ "http-server/modules/path"
-	_ "http-server/modules/storage"
+	_ "beba/modules/console"
+	_ "beba/modules/cookies"
+	_ "beba/modules/dtp"
+	_ "beba/modules/fetch"
+	_ "beba/modules/fs"
+	_ "beba/modules/path"
+	_ "beba/modules/storage"
 
-	"http-server/modules/security"
+	"beba/modules/security"
 )
 
 // Directive interface for matching and handling connections

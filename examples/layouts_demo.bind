@@ -1,5 +1,5 @@
 # examples/layouts_demo.bind
-# Run with: ./http-server --bind-file examples/layouts_demo.bind
+# Run with: ./beba --bind-file examples/layouts_demo.bind
 
 HTTP 0.0.0.0:8080
     SET APP_NAME "Layout Demo"

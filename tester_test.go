@@ -1,7 +1,7 @@
 package main
 
 import (
-	"http-server/plugins/config"
+	"beba/plugins/config"
 	"os"
 	"path/filepath"
 	"testing"

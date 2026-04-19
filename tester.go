@@ -2,8 +2,8 @@ package main
 
 import (
 	"fmt"
-	"http-server/plugins/config"
-	"http-server/processor"
+	"beba/plugins/config"
+	"beba/processor"
 	"os"
 	"regexp"
 	"strings"

@@ -1,6 +1,6 @@
 # Device Transfer Protocol (DTP)
 
-Le Device Transfer Protocol (DTP) est un protocole de communication binaire léger conçu pour les objets connectés (IoT). Il est intégré nativement dans `http-server`, supportant les transports **TCP** et **UDP** avec un multiplexage transparent et une Bridge automatique vers le Hub SSE.
+Le Device Transfer Protocol (DTP) est un protocole de communication binaire léger conçu pour les objets connectés (IoT). Il est intégré nativement dans `beba`, supportant les transports **TCP** et **UDP** avec un multiplexage transparent et une Bridge automatique vers le Hub SSE.
 
 ---
 

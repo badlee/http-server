@@ -6,7 +6,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"http-server/modules/security"
+	"beba/modules/security"
 
 	"github.com/paulmach/orb"
 )

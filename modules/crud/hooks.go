@@ -6,7 +6,7 @@ import (
 	"path/filepath"
 
 	"github.com/dop251/goja"
-	"http-server/processor"
+	"beba/processor"
 )
 
 // hookCtx is the context passed to every hook script.

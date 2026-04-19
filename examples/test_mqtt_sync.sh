@@ -2,7 +2,7 @@
 
 # MQTT-Hub Synchronization Test
 # 
-# Requires: ./http-server --bind examples/mqtt_sync.bind
+# Requires: ./beba --bind examples/mqtt_sync.bind
 #
 # This script validates bidirectional synchronization between SSE and MQTT.
 
@@ -19,7 +19,7 @@ echo ""
 curl -s -o /dev/null --connect-timeout 2 "http://127.0.0.1:$PORT/"
 if [ $? -ne 0 ]; then
     echo "❌ Error: Server not found on :$PORT"
-    echo "Please run: ./http-server --bind examples/mqtt_sync.bind"
+    echo "Please run: ./beba --bind examples/mqtt_sync.bind"
     exit 1
 fi
 

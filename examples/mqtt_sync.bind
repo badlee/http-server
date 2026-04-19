@@ -2,7 +2,7 @@
 # 
 # Demonstrates bidirectional synchronization between MQTT (Binary) and SSE Hub (Text).
 #
-# Run: ./http-server --bind examples/mqtt_sync.bind
+# Run: ./beba examples/mqtt_sync.bind
 #
 # Testing:
 #   MQTT -> Hub: Publish to 'home/temp' via MQTT, see it in SSE Hub.

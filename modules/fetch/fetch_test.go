@@ -1,7 +1,7 @@
 package fetch
 
 import (
-	"http-server/processor"
+	"beba/processor"
 	"net/http"
 	"net/http/httptest"
 	"os"

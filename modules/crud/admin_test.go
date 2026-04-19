@@ -7,7 +7,7 @@ import (
 	"strings"
 	"testing"
 
-	"http-server/plugins/httpserver"
+	"beba/plugins/httpserver"
 
 	"github.com/gofiber/fiber/v3"
 )

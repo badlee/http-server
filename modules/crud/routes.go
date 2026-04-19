@@ -3,9 +3,9 @@ package crud
 import (
 	"encoding/json"
 	"fmt"
-	"http-server/modules/sse"
-	"http-server/plugins/httpserver"
-	"http-server/types"
+	"beba/modules/sse"
+	"beba/plugins/httpserver"
+	"beba/types"
 	"strings"
 
 	"github.com/gofiber/fiber/v3"

@@ -1,6 +1,6 @@
 # FsRouter
 
-Le **FsRouter** est le cœur du système de routage de `http-server`. Contrairement aux routeurs traditionnels où les routes sont déclarées programmatiquement, le FsRouter utilise la structure de votre répertoire comme table de routage.
+Le **FsRouter** est le cœur du système de routage de `beba`. Contrairement aux routeurs traditionnels où les routes sont déclarées programmatiquement, le FsRouter utilise la structure de votre répertoire comme table de routage.
 
 Inspiré par des frameworks modernes comme Next.js, il permet une organisation intuitive et une séparation claire entre le contenu statique, les templates dynamiques et les endpoints API.
 

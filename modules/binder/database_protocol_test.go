@@ -1,7 +1,7 @@
 package binder
 
 import (
-	"http-server/modules/crud"
+	"beba/modules/crud"
 	"testing"
 )
 

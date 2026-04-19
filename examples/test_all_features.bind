@@ -1,6 +1,6 @@
 # Test complet: Workers, SSE, WebSocket, REWRITE/REDIRECT avec conditions JS, TEMPLATE
 # Port: 9200
-# Commande: ./http-server --bind-file examples/test_all_features.bind
+# Commande: ./beba-file examples/test_all_features.bind
 # Tests:
 #   curl http://127.0.0.1:9200/                          → JSON settings
 #   curl http://127.0.0.1:9200/env                       → ENV vars
@@ -29,7 +29,7 @@ DATABASE 'sqlite://test.db' [default]
                 <p>Date sur le serveur: <b>{{&now}}</b></p>
             </div>
         END PAGE
-        LINK "https://github.com/hobb/http-server" [title="Repository" icon=github order=99]
+        LINK "https://github.com/hobb/beba" [title="Repository" icon=github order=99]
     END ADMIN
 
     # -- Namespaces --

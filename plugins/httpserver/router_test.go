@@ -19,7 +19,7 @@ import (
 	"strings"
 	"testing"
 
-	"http-server/plugins/config"
+	"beba/plugins/config"
 
 	"github.com/gofiber/fiber/v3"
 )

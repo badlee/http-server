@@ -1,7 +1,7 @@
 package crud
 
 import (
-	"http-server/plugins/httpserver"
+	"beba/plugins/httpserver"
 	"net/http"
 	"net/http/httptest"
 	"testing"

@@ -11,8 +11,8 @@ stdout.log
 *.db
 *.sqlite
 *.sqlite3
-http-server.pid
-http-server
+beba.pid
+beba
 .vscode
 *.db
 *.db-shm

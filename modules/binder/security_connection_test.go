@@ -3,8 +3,8 @@ package binder
 import (
 	"testing"
 
-	"http-server/modules/security"
-	"http-server/plugins/httpserver"
+	"beba/modules/security"
+	"beba/plugins/httpserver"
 )
 
 // --------------------------------------------------------------------------

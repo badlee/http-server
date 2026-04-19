@@ -7,8 +7,8 @@ The Storage module provides persistent and volatile data management for the HTTP
 The module manages data in a key-value fashion, with support for typed operations (Numbers, Strings, Lists, Hashes). Data can be associated with specific sessions or shared globally.
 
 ### Files
-- [storage.go](file:///Users/hobb/Dev/tools/http-server/modules/storage/storage.go): Core implementation, GORM integration, and JS API registration.
-- [storage_test.go](file:///Users/hobb/Dev/tools/http-server/modules/storage/storage_test.go): Unit tests for JWT sessions and storage operations.
+- [storage.go](file:///Users/hobb/Dev/tools/beba/modules/storage/storage.go): Core implementation, GORM integration, and JS API registration.
+- [storage_test.go](file:///Users/hobb/Dev/tools/beba/modules/storage/storage_test.go): Unit tests for JWT sessions and storage operations.
 
 ## Features
 

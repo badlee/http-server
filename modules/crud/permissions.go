@@ -3,7 +3,7 @@ package crud
 import (
 	"encoding/json"
 	"errors"
-	"http-server/types"
+	"beba/types"
 
 	"gorm.io/gorm"
 )

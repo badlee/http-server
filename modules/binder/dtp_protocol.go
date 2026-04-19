@@ -7,8 +7,8 @@ import (
 	"sync"
 	"time"
 
-	"http-server/modules/sse"
-	"http-server/processor"
+	"beba/modules/sse"
+	"beba/processor"
 
 	"github.com/google/uuid"
 	"github.com/limba/dtp/pkg/dtp"

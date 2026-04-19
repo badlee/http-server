@@ -5,7 +5,7 @@ import (
 	"sort"
 	"strings"
 
-	"http-server/plugins/require"
+	"beba/plugins/require"
 
 	"github.com/dop251/goja"
 )

@@ -2,7 +2,7 @@ package crud
 
 import (
 	"encoding/json"
-	"http-server/modules/sse"
+	"beba/modules/sse"
 	"testing"
 	"time"
 )

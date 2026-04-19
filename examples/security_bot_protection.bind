@@ -1,7 +1,7 @@
 # Security Example: Bot Protection & JS Interactive Challenge
 #
 # Target: Demonstrate Layer 4 (Identity & Behavior) security.
-# Run: ./http-server --bind-file examples/security_bot_protection.bind
+# Run: ./beba --bind-file examples/security_bot_protection.bind
 #
 # Testing Commands:
 # 1. Blocked (Directly):

@@ -8,7 +8,7 @@ import (
 	"github.com/dop251/goja"
 	"github.com/gofiber/fiber/v3"
 
-	"http-server/processor"
+	"beba/processor"
 )
 
 func TestJSModule_Integration(t *testing.T) {

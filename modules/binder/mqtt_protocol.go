@@ -8,10 +8,10 @@ import (
 	"strings"
 	"time"
 
-	"http-server/modules/db"
-	"http-server/modules/security"
-	"http-server/modules/sse"
-	"http-server/plugins/httpserver"
+	"beba/modules/db"
+	"beba/modules/security"
+	"beba/modules/sse"
+	"beba/plugins/httpserver"
 
 	mqtt "github.com/mochi-mqtt/server/v2"
 	"gorm.io/gorm"

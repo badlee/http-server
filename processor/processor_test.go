@@ -6,7 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	"http-server/plugins/config"
+	"beba/plugins/config"
 )
 
 // newTestConfig returns a minimal AppConfig suitable for tests.

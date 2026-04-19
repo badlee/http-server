@@ -2,7 +2,7 @@ package db
 
 import (
 	"fmt"
-	"http-server/plugins/js"
+	"beba/plugins/js"
 	"reflect"
 	"strings"
 	"sync"

@@ -3,7 +3,7 @@ package binder
 import (
 	"testing"
 
-	"http-server/modules/db"
+	"beba/modules/db"
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
 )

@@ -2,7 +2,7 @@ package httpserver
 
 import (
 	"fmt"
-	"http-server/processor"
+	"beba/processor"
 	"strconv"
 	"strings"
 	"sync"

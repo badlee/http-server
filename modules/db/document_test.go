@@ -2,7 +2,7 @@ package db
 
 import (
 	"fmt"
-	"http-server/processor"
+	"beba/processor"
 	"testing"
 
 	"gorm.io/driver/sqlite"

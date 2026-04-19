@@ -18,7 +18,7 @@ type Config struct {
 
 	// Application name
 	//
-	// Optional. Default: "http-server"
+	// Optional. Default: "beba"
 	AppName string
 	// SessionStore defines the storage for session middleware.
 	//

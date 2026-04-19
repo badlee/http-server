@@ -1,7 +1,7 @@
 package path
 
 import (
-	"http-server/processor"
+	"beba/processor"
 	"runtime"
 	"testing"
 )

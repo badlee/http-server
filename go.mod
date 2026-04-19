@@ -1,18 +1,23 @@
-module http-server
+module beba
 
 go 1.26.0
 
-replace http-server/plugins/require => ./plugins/require
+replace beba/plugins/require => ./plugins/require
 
-replace http-server/plugins/config => ./plugins/config
+replace beba/plugins/config => ./plugins/config
 
-replace http-server/plugins/httpserver => ./plugins/httpserver
+replace beba/plugins/httpserver => ./plugins/httpserver
 
-replace http-server/plugins/js => ./plugins/js
+replace beba/plugins/js => ./plugins/js
+
+replace github.com/tecnickcom/go-tcpdf => ./plugins/go-tcpdf
+
+replace beba/plugins/pdf => ./plugins/go-tcpdf
 
 replace github.com/limba/dtp => ../../limba/dtp
 
 require (
+	beba/plugins/require v0.0.0-00010101000000-000000000000
 	github.com/Microsoft/go-winio v0.6.2
 	github.com/PuerkitoBio/goquery v1.11.0
 	github.com/cbroglie/mustache v1.4.0
@@ -38,9 +43,10 @@ require (
 	github.com/prometheus/client_golang v1.23.2
 	github.com/rs/zerolog v1.34.0
 	github.com/spf13/pflag v1.0.10
+	github.com/tecnickcom/go-tcpdf v0.0.0-00010101000000-000000000000
 	github.com/valyala/fasthttp v1.69.0
-	golang.org/x/crypto v0.49.0
-	golang.org/x/text v0.35.0
+	golang.org/x/crypto v0.50.0
+	golang.org/x/text v0.36.0
 	gopkg.in/yaml.v3 v3.0.1
 	gorm.io/driver/clickhouse v0.7.0
 	gorm.io/driver/gaussdb v0.1.0
@@ -49,7 +55,6 @@ require (
 	gorm.io/driver/sqlite v1.6.0
 	gorm.io/driver/sqlserver v1.6.3
 	gorm.io/gorm v1.31.1
-	http-server/plugins/require v0.0.0-00010101000000-000000000000
 	modernc.org/sqlite v1.47.0
 )
 
@@ -128,9 +133,9 @@ require (
 	github.com/valyala/bytebufferpool v1.0.0 // indirect
 	go.opentelemetry.io/otel v1.26.0 // indirect
 	go.opentelemetry.io/otel/trace v1.26.0 // indirect
-	golang.org/x/net v0.52.0 // indirect
+	golang.org/x/net v0.53.0 // indirect
 	golang.org/x/sync v0.20.0 // indirect
-	golang.org/x/sys v0.42.0 // indirect
+	golang.org/x/sys v0.43.0 // indirect
 	google.golang.org/protobuf v1.36.11 // indirect
 	modernc.org/libc v1.70.0 // indirect
 	modernc.org/mathutil v1.7.1 // indirect

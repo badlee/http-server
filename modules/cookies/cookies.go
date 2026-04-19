@@ -1,7 +1,7 @@
 package cookies
 
 import (
-	"http-server/modules"
+	"beba/modules"
 
 	"github.com/dop251/goja"
 	"github.com/gofiber/fiber/v3"

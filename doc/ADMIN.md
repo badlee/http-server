@@ -1,6 +1,6 @@
 # Interface d'Administration DATABASE (Admin UI)
 
-Le module DATABASE de **http-server** dispose d'une interface d'administration temps réel intégrée, propulsée par HTMX, SSE (Server-Sent Events) et le système de templating natif `processor`.
+Le module DATABASE de **beba** dispose d'une interface d'administration temps réel intégrée, propulsée par HTMX, SSE (Server-Sent Events) et le système de templating natif `processor`.
 
 Elle permet d'ajouter très facilement de nouvelles métriques, pages, et liens externes dans son menu via une API native simple.
 
@@ -26,7 +26,7 @@ L'interface sera disponible sur : `http://localhost:8080/api/_admin/`
 
 L'interface d'administration est hautement modulaire. Vous pouvez étendre son menu latéral et ajouter de nouvelles pages entièrement gérées par le layout de l'application grâce au registre global du module DATABASE.
 
-Ces configurations se font côté serveur, avant ou pendant le démarrage de `http-server`.
+Ces configurations se font côté serveur, avant ou pendant le démarrage de `beba`.
 
 ### 1. Ajouter une page interne (`AdminPage`)
 
@@ -35,7 +35,7 @@ La structure `crud.AdminPage` définit une route personnalisée intégrée au La
 ```go
 package main
 
-import "http-server/modules/crud"
+import "beba/modules/crud"
 
 func init() {
     crud.RegisterAdminPage(crud.AdminPage{

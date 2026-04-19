@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Security Test: Bot Protection Validation
-# Prerequisite: ./http-server --bind-file examples/security_bot_protection.bind
+# Prerequisite: ./beba --bind-file examples/security_bot_protection.bind
 
 echo "--- Layer 4 Security: Bot Detection Test ---"
 echo ""

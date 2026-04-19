@@ -1,12 +1,12 @@
 package httpserver
 
 import (
-	"http-server/plugins/config"
+	"beba/plugins/config"
 	"os"
 	"path/filepath"
 	"testing"
 
-	_ "http-server/modules/fs" // allow `require('fs')` in js script
+	_ "beba/modules/fs" // allow `require('fs')` in js script
 )
 
 func TestFsRouter_Lifecycle_Start(t *testing.T) {

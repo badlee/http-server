@@ -1,8 +1,8 @@
 package console
 
 import (
-	"http-server/modules"
-	"http-server/processor"
+	"beba/modules"
+	"beba/processor"
 	"log"
 	"os"
 

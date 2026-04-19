@@ -93,8 +93,8 @@ import (
 	"sort"
 	"strings"
 
-	"http-server/plugins/config"
-	"http-server/processor"
+	"beba/plugins/config"
+	"beba/processor"
 
 	"github.com/dop251/goja"
 	"github.com/go-co-op/gocron/v2"

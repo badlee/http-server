@@ -2,7 +2,7 @@ package db
 
 import (
 	"fmt"
-	"http-server/processor"
+	"beba/processor"
 
 	"github.com/dop251/goja"
 	"gorm.io/gorm"

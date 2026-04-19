@@ -1,7 +1,7 @@
 package dtp
 
 import (
-	"http-server/processor"
+	"beba/processor"
 	"strings"
 	"testing"
 )

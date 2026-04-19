@@ -6,7 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	"http-server/plugins/config"
+	"beba/plugins/config"
 
 	"github.com/dop251/goja"
 )

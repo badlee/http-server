@@ -3,7 +3,7 @@ package dtp
 import (
 	"crypto/sha256"
 	"fmt"
-	"http-server/modules"
+	"beba/modules"
 	"log"
 
 	"github.com/dop251/goja"

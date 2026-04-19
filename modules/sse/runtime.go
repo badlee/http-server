@@ -1,8 +1,8 @@
 package sse
 
 import (
-	"http-server/plugins/config"
-	"http-server/processor"
+	"beba/plugins/config"
+	"beba/processor"
 	"log"
 	"sync"
 	"time"

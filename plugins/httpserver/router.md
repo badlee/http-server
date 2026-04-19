@@ -29,7 +29,7 @@ Inspiré de Next.js — la structure du répertoire **est** le routeur.
 ## Installation
 
 ```
-import "http-server/plugins/httpserver"
+import "beba/plugins/httpserver"
 ```
 
 ---

@@ -1,166 +1,425 @@
-# Le Backend Hyper-média Ultime pour Développeurs Modernes
+# Beba – Le Backend Unifié pour Tous
 
-**http-server** est un **serveur hyper-média** et un **backend Open Source** "all-in-one" distribué sous la forme d'un **seul fichier** binaire auto-contenu. Oubliez la complexité des infrastructures Docker et micro-services : déployez une **application fullstack** complète en quelques secondes avec un moteur alliant la rapidité du **SSR** (Mustache/JS) à l'élégance de **HTMX**.
+**Beba** (signifie *"Tous, Tout le monde"* en langue Akélé du Gabon) est un **serveur hyper-média** et un **backend Open Source** "all-in-one" distribué sous la forme d'un **seul fichier** binaire auto-contenu.
 
-### **Pourquoi intégrer http-server à votre stack ?**
+Oubliez la complexité des infrastructures Docker et micro-services : déployez une **application fullstack** complète en quelques secondes avec un moteur alliant la rapidité du **SSR** (Mustache/JS) à l'élégance de **HTMX**.
 
-*   **📂 Routage par Fichiers (inspiré de Next.js/Nuxt.js)**  
-    Organisez votre logique backend avec la simplicité du routage basé sur les dossiers. Comme dans **Next.js** ou **Nuxt.js**, la structure de votre répertoire définit vos routes, incluant le support natif des paramètres dynamiques (`[id]`), des layouts imbriqués et des middlewares en cascade.
-    
-*   **⚡ Rendu SSR & Scripting JS Natif**  
-    Boostez vos performances avec un moteur **JavaScript** serveur intégré. Définissez votre logique métier directement dans vos templates ou scripts isolés, bénéficiant d'un pont direct vers vos données sans l'overhead d'une API externe.
-    
-*   **🛠️ Engine Database/CRUD Unifié & Admin UI**  
-    Basculez en mode **Headless CMS** instantanément. Le module **DATABASE** unifie désormais le moteur CRUD et les schémas dynamiques. Il génère automatiquement vos API REST et une interface d'administration temps-réel (propulsée par HTMX + SSE), gérant nativement les relations (`has=one`, `many`, `many2many`) et les migrations différées sécurisées (Dual Struct).
-    
-*   **📡 Hub Realtime Massivement Scalable (+100k connexionsde clients)**  
-    Le cœur du système : un **Sharded Hub** v3 ultra-performant capable de gérer **plus d'un million de clients simultanément**. Support natif et interopérable de **SSE**, **WebSocket**, **MQTT 5.0** et **Socket.IO**. Grâce au scripting JS événementiel unifié (`onMessage`, `onClose`), gérez votre logique temps-réel avec une simplicité déconcertante, tout en bénéficiant de protections avancées contre les boucles d'écho infinies et d'une priorité stricte pour les événements de cycle de vie.
-    
-*   **🛡️ Sentinelle de Sécurité intégrée**  
-    Allez au-delà du simple HTTPS. Profitez d'une protection en profondeur à 5 couches : filtrage IP/Géo au niveau socket (L4), détection de bots par Proof-of-Work, et un WAF Coraza (L7) natif pour bloquer SQLi et XSS avant qu'ils ne touchent votre code.
+> *Beba. Pour tous, partout.*
 
-## Architecture & Modules
-- **Binder (`modules/binder`)** : Multiplexage de protocoles (HTTP, DTP, MQTT, JS custom) sur un même port via des fichiers `.bind`.
-- **Temps-Réel (`modules/sse`)** : Hub SSE/WS/MQTT/IO sharded haute performance (100k+ connexions).
-- **Base de Données (`modules/db` & `modules/crud`)** : Moteur unifié Mongoose-like (GORM) avec support des relations, schémas dynamiques et migrations "Dual Struct" anti-panique.
-- **Paiement (`modules/binder/payment`)** : Intégration unifée Stripe, Mobile Money et Crypto (X402).
-- **Sécurité (`modules/security`)** : Moteur de filtrage L4 et pare-feu applicatif (WAF).
-- **Scripting Script (`processor/`)** : Rendu hybride Mustache/JS et exécution server-side isolée.
+---
 
-## ⚔️ Le "Killer Feature" Table : http-server vs Nginx vs Apache
+## Table des matières
 
-| Caractéristique | http-server | Nginx | Apache HTTPD |
-|---|---|---|---|
-| **Découverte & Run** | **Binaire Unique (0 dep)** | Paillage complexe | Paillage complexe |
-| **Port Multiplexing** | **Natif (1 Port = N Protos)** | Séparé par Port / Proxy | Séparé par Port |
-| **Paiements Natifs** | **Directives Stripe/MoMo/X402** | N / A | N / A |
-| **Web App Firewall** | **Coraza + CRS (Natif)** | Module ModSec (tiers) | Module ModSec (tiers) |
-| **Security Audit** | **Signé (HMAC Chain)** | Texte Simple | Texte Simple |
-| **Scripting Logic** | **JavaScript Natif (Isolé)** | Lua (Complexe) / NJS | PHP/C (Interpréteur ext) |
-| **Géo-fencing** | **GeoJSON, GéoIP et Plus Code** | GéoIP (Pays uniquement) | GéoIP (Pays uniquement) |
-| **Real-time Hub** | **Natif (+100k connexionsConnexions)** | Plugins tiers (Nchan) | Support minimal |
-| **IoT Integration** | **DTP & MQTT Unifié** | Websocket simple | Plugins lourds |
-| **Dev Experience** | **Hot-reload & FsRouter** | Configuration Statique | Configuration Statique |
+- [Pourquoi Beba ?](#pourquoi-beba-)
+- [Fonctionnalités clés](#fonctionnalités-clés)
+- [Beba vs les autres](#beba-vs-les-autres)
+- [Installation](#installation)
+- [Utilisation](#utilisation)
+- [Exemple : API payante avec géofencing](#exemple--api-payante-avec-géofencing)
+- [Initialisation automatique](#initialisation-automatique-sans-bind)
+- [Structure de projet recommandée](#structure-de-projet-recommandée-fsrouter)
+- [Commandes et options](#commandes-et-options)
+- [Documentation complète](#documentation-complète)
+- [Pourquoi le nom Beba ?](#pourquoi-le-nom-beba-)
+- [Contribution](#contribution)
+- [Licence](#licence)
 
-## 🛡️ Une Forteresse à 5 Couches (Architecture Sentinelle)
+---
 
-http-server embarque une défense en profondeur à 5 couches pour protéger vos applications IoT et Web :
+## Pourquoi Beba ?
 
-1.  **L1 Network** : Filtrage IP/CIDR et **GeoJSON Dynamic Fencing** au niveau de l'acceptation de la socket.
-2.  **L2 Protocol** : Validation stricte des méthodes et des limites de corps (BodyLimit) pour TCP et UDP.
-3.  **L3 Applicative (WAF)** : Moteur Coraza intégré avec les règles CRS (Core Rule Set) pour bloquer SQLi/XSS.
-4.  **L4 Identity** : Détection de Bots et **JS Challenge (Proof-of-Work)** natifs pour les requêtes suspectes.
-5.  **L5 Audit** : Journalisation immuable via **Chaînage de hash HMAC** garantissant l'intégrité des logs.
+| Le problème | La solution Beba |
+|-------------|------------------|
+| Docker, Kubernetes, 15 services à orchestrer | **Un seul binaire** (50-70 Mo) |
+| `npm install` + 500 dépendances | **Zéro dépendance**, zéro `node_modules` |
+| Builds de 5 minutes, configurations fragiles | **Démarrage instantané** (10 ms), hot-reload |
+| Perte des données en mode "simple" | **Persistance réelle** (dossier `./.data`) |
+| Sécurité à ajouter (WAF, rate limiting, HTTPS) | **Sentinelle 5 couches** intégrée |
+| Séparer API, base, realtime, MQTT, paiements | **Tout est unifié**, ponts automatiques |
 
-## ✨ Fonctionnalités Clés
+---
 
-- **Ultra-Rapide** : Optimisé pour des performances "Bare-Metal" sans overhead de runtime externe.
-- **SSR & JS Server-Side** : Exécution de `<script server>` et balises PHP-style (`<?js ?>`) hautement performantes.
-- **FsRouter (File-System Routing)** : Routage automatique type Next.js avec `[id]`, `[...]`, `(group)` et `_middleware.js`.
-- **DTP (Device Transfer Protocol)** : Protocole IoT natif TCP/UDP avec bridge automatique vers le Hub SSE.
-- **Broker MQTT 5.0** : Broker natif ultra-performant unifié avec le Hub SSE et persistance GORM (`STORAGE`).
-- **Module Paiement Universel** : Directive `PAYMENT` supportant Stripe, Mobile Money (MTN/Orange) et les protocoles crypto **X402**.
-- **Geofencing GeoJSON** : Filtrage géographique précis (L4) via la directive `GEOJSON` compatible TCP et **UDP**.
-- **Middlewares Nommés** : `@CORS`, `@LIMITER`, `@HELMET`, `@CSRF`, `@AUDIT`, `@BOT`, `@WAF` applicables par route.
-- **Auth Multi-Algorithmes** : Support natif Bcrypt, SHA-512, et scripting JS (`allow()`/`reject()`).
-- **Binder – Multiplexage de Protocoles** : Configuration déclarative `.bind` pour mixer HTTP, DTP, MQTT, etc. sur le même port.
+## Fonctionnalités clés
 
-```bash
-go build -o http-server .
-```
+### Routage par fichiers (FsRouter)
+Comme dans **Next.js** ou **Nuxt.js**, la structure de votre répertoire définit vos routes. Support natif des paramètres dynamiques (`[id]`), des groupes (`(group)`), des layouts imbriqués (`_layout.html`) et des middlewares en cascade (`_middleware.js`).
 
-## 🚀 Exemples d'utilisation
+### SSR et scripting JS natif
+Exécutez du **JavaScript côté serveur** directement dans vos templates (`<script server>`, `<?js ?>`, `<?= ... ?>`). Accédez à votre base de données, au hub temps-réel, aux sessions – sans API intermédiaire.
 
-### 1. Simple (Serveur de fichiers statiques)
-Lance un serveur sur le port 8080 servant le répertoire courant :
-```bash
-./http-server
-```
+> [!CAUTION] Seules les variables déclarées avec `var` sont exposées au moteur de template Mustache.
 
-### 2. Multi-sites (Virtual Hosts)
-Lance le mode Master qui gère plusieurs sites isolés basés sur les sous-dossiers de `./vhosts` :
-```bash
-./http-server ./vhosts --vhosts
-```
+### Base de données et CRUD unifié
+Basculez en mode **Headless CMS** instantanément. Définissez vos schémas en DSL, avec relations (`has=one`, `many`, `many2many`). Beba génère automatiquement :
+- Une **API REST complète**
+- Une **interface d'administration temps-réel** (HTMX + SSE)
+- Des **migrations sécurisées** (Dual Struct)
 
-### 3. Avancé (Multiplexage avec Binder)
-Lance le serveur en utilisant un ou plusieurs fichiers de configuration `.bind` pour mixer HTTP, DTP (IoT), MQTT, etc. :
-```bash
-# Avec un seul fichier
-./http-server --bind server.bind
+**En mode simple (`./beba`)** : la base de données SQLite et les sessions sont **persistantes** et stockées dans le dossier `./.data`. Redémarrez votre serveur, vos données restent intactes.
 
-```bash
-# Avec plusieurs fichiers combinés
-./http-server --bind app.bind --bind iot.bind --bind security.bind
-```
+### Hub realtime massivement scalable
+Le cœur du système : un hub de messagerie haute performance capable de gérer **plus d'un million de clients simultanés**.
+- **SSE** (Server-Sent Events)
+- **WebSocket** classique
+- **MQTT 5.0** (broker natif, accessible sur `/api/realtime/mqtt`)
+- **Socket.IO**
 
-## 🎛️ Options de la ligne de commande
+**Bridge automatique** : un message MQTT d'un capteur IoT est immédiatement diffusé en SSE vers vos dashboards web.
 
-Consultez la [Documentation CLI](doc/CLI.md) pour la liste complète. Les options majeures :
-- `--port, -p` : Port d'écoute (défaut: 8080).
-- `--bind, -b` : Fichiers de configuration `.bind`.
-- `--hot-reload, -H` : Activer le rechargement à chaud (défaut: true).
-- `--vhosts, -V` : Activer le mode Virtual Hosts.
-- `--secure, -S` : Activer HTTPS (nécessite `--cert` et `--key`).
+### Sécurité – Architecture Sentinelle 5 couches
+Beba embarque une défense en profondeur, sans module externe :
 
-## Exemple Binder (Sécurité + Paiement)
+| Couche | Niveau | Protection |
+|--------|--------|------------|
+| **L1** | Network | Filtrage IP/CIDR, **Géofencing GeoJSON** au niveau socket |
+| **L2** | Protocol | Validation des méthodes, limites de corps (4 Mo par défaut) |
+| **L3** | Applicative | **WAF Coraza** + règles OWASP CRS (SQLi, XSS, LFI) |
+| **L4** | Identity | Détection de bots, **défi Proof-of-Work** |
+| **L5** | Audit | Logs immuables signés par **chaînage HMAC** |
+
+**Par défaut** : rate limiting 100 req/s, limite de corps 4 Mo, protection anti-path traversal.
+
+### Paiements intégrés
+Une directive `PAYMENT` et c'est tout. Support natif :
+- **Stripe** (cartes, checkout)
+- **Mobile Money** (MTN, Orange, Airtel)
+- **Crypto** (protocole X402)
+- **Providers personnalisés** (DSL complet)
 
 ```hcl
-# main.bind
-SECURITY globale [default]
-    CONNECTION RATE 500r/s 1s burst=50
-    GEOJSON office_zone "data/office.geojson"
-    CONNECTION ALLOW office_zone
-END SECURITY
+GET @PAYMENT[name=stripe price="9.99"] "/premium"
+    context.JSON({ data: "contenu premium" })
+END GET
+```
 
-PAYMENT "stripe://sk_live_xxx" [default]
-    NAME my_stripe
+### Génération PDF native
+Middleware `@PDF` pour transformer n'importe quelle réponse HTML en document PDF professionnel.
+
+```hcl
+GET @PDF[name="facture" format="A4"] "/invoice"
+    <h1>Facture</h1><p>Montant: 100€</p>
+END GET
+```
+
+### Multiplexage de protocoles (Binder)
+Un seul port, des protocoles multiples. Grâce au **Binder**, vous pouvez mixer sur la même socket :
+- HTTP / HTTPS
+- MQTT
+- DTP (protocole IoT maison)
+- Protocoles JavaScript personnalisés
+
+Configuration déclarative via des fichiers `.bind`.
+
+### Virtual hosts (multi-sites)
+Mode **Master-Worker** : chaque site tourne dans son propre processus, avec son environnement JavaScript isolé. Configuration via fichier `.vhost` ou `.vhost.bind`.
+
+```bash
+./beba ./vhosts --vhosts
+```
+
+### Emails intégrés (MAIL)
+Support natif de SMTP, SendGrid, Mailgun, Postmark, et providers REST personnalisés.
+- Templates Mustache
+- Pièces jointes
+- Middlewares `@PRE` / `@POST`
+
+### Tâches planifiées (CRON)
+Les fichiers `_*.cron.js` sont automatiquement planifiés. L'en-tête `# CRON * * * * *` définit le planning.
+
+```js
+# CRON */5 * * * *
+console.log("Tâche exécutée toutes les 5 minutes");
+```
+
+### Cycle de vie du serveur
+- `_start.js` : exécuté une seule fois au démarrage
+- `_close.js` : exécuté à l'arrêt propre (SIGTERM/SIGINT)
+- `_middleware.js` : middleware en cascade
+- `_layout.html` : layout imbriqué
+
+---
+
+## Beba vs les autres
+
+| Fonctionnalité | **Beba** | Nginx | Apache | PocketBase | Supabase |
+|----------------|----------|-------|--------|------------|----------|
+| **Binaire unique** | ✅ | ❌ | ❌ | ✅ | ❌ |
+| **Zero config par défaut** | ✅ | ❌ | ❌ | ✅ | ❌ |
+| **Persistance des données sans config** | ✅ (dossier `./.data`) | ❌ | ❌ | ✅ | ❌ |
+| **Base de données intégrée** | ✅ (SQLite/Postgres/MySQL) | ❌ | ❌ | ✅ (SQLite) | ✅ (PostgreSQL) |
+| **API CRUD auto** | ✅ | ❌ | ❌ | ✅ | ✅ |
+| **Admin UI intégrée** | ✅ (HTMX + SSE) | ❌ | ❌ | ✅ | ✅ |
+| **WAF intégré** | ✅ (Coraza + CRS) | ❌ | ❌ | ❌ | ❌ |
+| **Paiements natifs** | ✅ (Stripe/MoMo/Crypto) | ❌ | ❌ | ❌ | ❌ |
+| **Génération PDF native** | ✅ | ❌ | ❌ | ❌ | ❌ |
+| **MQTT Broker** | ✅ | ❌ | ❌ | ❌ | ❌ |
+| **Protocole IoT maison (DTP)** | ✅ (TCP/UDP) | ❌ | ❌ | ❌ | ❌ |
+| **Hub temps-réel unifié** | ✅ (SSE/WS/MQTT/IO) | ❌ | ❌ | ✅ (SSE/WS) | ✅ (Realtime) |
+| **HTTPS + Let's Encrypt** | ✅ | via certbot | via certbot | ❌ | ❌ |
+| **Hot-reload** | ✅ | ❌ | ❌ | ✅ | ❌ |
+| **Routage fichiers (Next.js-like)** | ✅ | ❌ | ❌ | ❌ | ❌ |
+| **Tâches CRON intégrées** | ✅ | ❌ | ❌ | ✅ | ❌ |
+| **Scripting JS serveur** | ✅ | (Lua/NJS) | (PHP) | ✅ (JS + Go hooks) | ❌ |
+| **Emails intégrés** | ✅ (SMTP/SendGrid/Mailgun) | ❌ | ❌ | ✅ | ❌ |
+| **Multiplexage de protocoles (1 port)** | ✅ (HTTP/MQTT/DTP/JS) | ❌ | ❌ | ❌ | ❌ |
+| **Géofencing GeoJSON** | ✅ | ❌ | ❌ | ❌ | ❌ |
+
+---
+
+## Installation
+
+### Depuis les sources
+
+```bash
+git clone https://github.com/badlee/beba.git
+cd beba
+go build -o beba .
+```
+
+### Binaire pré-compilé (à venir)
+
+```bash
+# Linux
+wget https://github.com/badlee/beba/releases/latest/beba-linux-amd64
+chmod +x beba-linux-amd64
+./beba-linux-amd64
+```
+
+---
+
+## Utilisation
+
+### 1. Mode simple (serveur de fichiers statiques + CRUD persistant + Admin UI)
+
+```bash
+./beba
+```
+
+**Vous avez immédiatement** :
+- Serveur HTTP sur `http://localhost:8080`
+- Base de données **SQLite persistante** dans `./.data/beba.db`
+- Sessions persistantes dans `./.data/sessions.db`
+- API REST automatique sur `/api`
+- Interface d'administration sur `/_admin`
+- Hub SSE sur `/sse` (passif, utilise `?channel=...`)
+- WebSocket sur `/ws` (passif, utilise `?channel=...`)
+- MQTT sur `/api/realtime/mqtt` (WebSocket)
+- Broker MQTT TCP sur port 1883
+- Routage par fichiers (FsRouter) actif (`./pages/` par défaut)
+
+> Les données sont persistantes : vous pouvez redémarrer le serveur, vos collections, utilisateurs et documents restent intacts.
+
+### 2. Avec un fichier de configuration `.bind`
+
+```bash
+./beba --bind app.bind
+```
+
+### 3. Mode Virtual Hosts (multi-sites)
+
+```bash
+./beba ./vhosts --vhosts
+```
+
+### 4. Avec HTTPS et Let's Encrypt
+
+```bash
+# CLI
+./beba --https --cert cert.pem --key key.pem
+
+# Ou dans le fichier .bind
+HTTPS 0.0.0.0:443
+    SSL AUTO exemple.com admin@exemple.com
+END HTTPS
+```
+
+---
+
+## Exemple : API payante avec géofencing
+
+**Fichier `app.bind` :**
+
+```hcl
+# Base de données persistante
+DATABASE "sqlite://.data/monapp.db"
+    SCHEMA users DEFINE
+        FIELD email string [unique, required]
+        FIELD name string [required]
+    END SCHEMA
+END DATABASE
+
+# Paiement Stripe
+PAYMENT "stripe://sk_live_xxx"
+    NAME stripe_prod
     CURRENCY EUR
-    REDIRECT success "/success"
-    WEBHOOK @POST /stripe/callback BEGIN
-        if (payment.status === "succeeded") { sse.publish("donations", payment) }
-    END WEBHOOK
 END PAYMENT
 
-HTTP 0.0.0.0:8080
-    SET APP_NAME "SecureApp"
+# Sécurité
+SECURITY production [default]
+    CONNECTION RATE 100r/s 1s burst=10
+    GEOJSON europe "geo/europe.geojson"
+    CONNECTION ALLOW europe
+END SECURITY
 
-    # Route protégée par WAF et nécessitant un paiement
-    POST @WAF @PAYMENT[name=my_stripe price="10.00" ref="premium_access"] "/premium/data" JSON
-        {"status": "paid", "data": "Top secret info"}
-    END POST
+# Serveur HTTP
+HTTP :8080
+    CRUD default /api
+    PAYMENT stripe_prod /pay
 
-    # Schéma avec relations et contraintes
-    DATABASE "sqlite://:memory:"
-        SCHEMA Project DEFINE
-            FIELD name string [required]
-            FIELD owner_id User.id [has=one delete=cascade]
-            FIELD members User.id [has=many2many]
-        END SCHEMA
-    END DATABASE
-
-    # Hub Real-time unifié
-    SSE /events
+    GET @PAYMENT[name=stripe_prod price="9.99"] "/premium"
+        context.JSON({ status: "paid", data: "Top secret" })
+    END GET
 END HTTP
 ```
 
-## Documentation
-
-| Fichier | Description |
-|---|---|
-| [Binder Config (.bind)](doc/BINDER.md) | **Référence complète** (HTTP, DTP, MQTT, SECURITY, PAYMENT) |
-| [WAF & Security](doc/WAF.md) | Guide des **5 couches Sentinelle** et du filtrage L4 |
-| [Payment Module](doc/PAYMENT.md) | Stripe, Mobile Money et standard Crypto X402 |
-| [Database & CRUD](doc/DATABASE.md) | API Mongoose-like, drivers GORM et Admin HTMX |
-| [Server-Side JS](doc/JS_SCRIPTING.md) | Interpréteur Javascript et API disponibles |
-| [Real-time & MQTT](doc/MQTT.md) | Hub unifié SSE/WS/MQTT/IO |
-| [DTP IoT Protocol](doc/DTP.md) | Protocole industriel natif |
-| [CLI Usage](doc/CLI.md) | Flags et options avancés |
+**Lancement :**
+```bash
+./beba --bind app.bind
+```
 
 ---
-*Déployez, Sécurisez, Encaissez. http-server.*
-Exemples Rapides
 
-- [Showcase Temps-Réel (SSE/WS/MQTT/IO)](examples/realtime_showcase.bind)
-- [Routage Fichier (FsRouter)](examples/advanced_features.bind)
-- [Multiplexage TCP (HTTP + DTP)](examples/multiplex_test.bind)
+## Initialisation automatique (sans `.bind`)
+
+Placez un fichier `_start.js` dans `./pages/`. Il sera exécuté **une seule fois** au démarrage :
+
+```javascript
+// pages/_start.js
+const db = require('db');
+
+// Créer une collection avec schéma (persistante dans .data)
+db.createCollection('users', {
+    schema: {
+        email: { type: 'string', required: true, unique: true },
+        name: { type: 'string', required: true },
+        role: { type: 'string', default: 'user' }
+    }
+});
+
+// Créer un admin par défaut
+const adminExists = db.collection('users').findOne({ email: 'admin@beba.local' });
+if (!adminExists) {
+    db.collection('users').create({
+        email: 'admin@beba.local',
+        name: 'Administrateur',
+        role: 'admin'
+    });
+    console.log('✅ Admin créé : admin@beba.local (mot de passe à définir)');
+}
+
+console.log('✅ Base de données initialisée dans .data/');
+```
+
+---
+
+## Structure de projet recommandée (FsRouter)
+
+```
+mon-projet/
+├── .data/                      # PERSISTANCE (créé automatiquement)
+│   ├── beba.db                 # Base de données SQLite
+│   └── sessions.db             # Sessions persistantes
+├── pages/                      # Dossier racine des routes
+│   ├── _start.js               # Initialisation (une fois)
+│   ├── _close.js               # Nettoyage (arrêt)
+│   ├── _middleware.js          # Middleware global
+│   ├── _layout.html            # Layout global
+│   ├── index.html              # Page d'accueil (/)
+│   ├── about.html              # Page statique (/about)
+│   ├── (group)/                # Groupe de routes (n'apparaît pas dans l'URL)
+│   │   └── page.html           # /page
+│   ├── blog/
+│   │   ├── _middleware.js      # Middleware local
+│   │   ├── index.html          # /blog
+│   │   └── [slug].html         # Route dynamique /blog/:slug
+│   ├── api/
+│   │   ├── users.js            # Endpoint GET /api/users
+│   │   └── users.POST.js       # Endpoint POST /api/users
+│   └── _cleanup.cron.js        # Tâche planifiée toutes les X minutes
+└── uploads/                    # Fichiers statiques (images, etc.)
+```
+
+**Fichiers spéciaux :**
+
+| Nom | Description |
+|-----|-------------|
+| `_middleware.js` | S'exécute avant toute route du dossier |
+| `_layout.html` | Layout commun (tag `{{content}}` pour le contenu) |
+| `_start.js` | Une seule fois au démarrage |
+| `_close.js` | Une seule fois à l'arrêt |
+| `_*.cron.js` | Tâche planifiée (CRON en première ligne) |
+
+---
+
+## Commandes et options
+
+| Flag | Description | Défaut |
+|------|-------------|--------|
+| `--port, -p` | Port d'écoute | 8080 |
+| `--bind, -b` | Fichier(s) de configuration `.bind` | - |
+| `--hot-reload, -H` | Rechargement à chaud | true |
+| `--vhosts, -V` | Mode Virtual Hosts | false |
+| `--https` | Activer HTTPS | false |
+| `--cert`, `--key` | Certificat SSL | - |
+| `--no-template` | Désactiver le moteur de templates | false |
+| `--schedule` | Activer les tâches CRON | true |
+| `--config-file, -c` | Fichier de config (JSON/YAML/TOML) | app |
+| `--env-file` | Fichier d'environnement (.env) | .env |
+| `--silent, -S` | Supprimer les logs | false |
+
+---
+
+## Documentation complète
+
+| Fichier | Description |
+|---------|-------------|
+| [BINDER.md](doc/BINDER.md) | **Configuration `.bind`** – Référence complète |
+| [ROUTER.md](doc/ROUTER.md) | **FsRouter** – Routage par fichiers (Next.js-like) |
+| [HTTP.md](doc/HTTP.md) | **HTTP/HTTPS** – Moteur web, SSL, middlewares |
+| [DATABASE.md](doc/DATABASE.md) | **Base de données** – Schémas, relations, API CRUD |
+| [ADMIN.md](doc/ADMIN.md) | **Admin UI** – Interface d'administration |
+| [JS_SCRIPTING.md](doc/JS_SCRIPTING.md) | **Scripting JS** – API serveur, modules natifs |
+| [SECURITY.md](doc/SECURITY.md) | **Sécurité** – Architecture Sentinelle 5 couches |
+| [PAYMENT.md](doc/PAYMENT.md) | **Paiements** – Stripe, Mobile Money, Crypto X402 |
+| [MQTT.md](doc/MQTT.md) | **MQTT** – Broker temps-réel unifié |
+| [DTP.md](doc/DTP.md) | **DTP** – Protocole IoT natif (TCP/UDP) |
+| [IO.md](doc/IO.md) | **Socket.IO** – Support natif |
+| [MAIL.md](doc/MAIL.md) | **Emails** – SMTP, SendGrid, Mailgun |
+| [TEMPLATING.md](doc/TEMPLATING.md) | **Templates** – Mustache + JavaScript |
+| [STORAGE.md](doc/STORAGE.md) | **Session & Cache** – Persistance et JWT |
+| [VHOST.md](doc/VHOST.md) | **Virtual Hosts** – Multi-sites, Master-Worker |
+| [CLI.md](doc/CLI.md) | **Ligne de commande** – Flags et options |
+
+---
+
+## Pourquoi le nom Beba ?
+
+**Beba** signifie *"Tous, Tout le monde"* en langue **Akélé** (Gabon). Ce choix n'est pas anodin :
+
+- **Universalité** : Beba sert tous les développeurs, tous les projets, tous les protocoles.
+- **Communauté** : Comme le sens du mot, Beba rassemble – il fédère base de données, API, temps-réel, sécurité et paiements dans une seule et même entité.
+- **Rareté** : Un nom unique, sans collision, qui porte une histoire et une profondeur.
+
+> *Beba. Pour tous, partout.*
+
+---
+
+## Contribution
+
+Les contributions sont les bienvenues. Voici comment aider :
+
+1. **Tester** le projet sur vos cas d'usage
+2. **Signaler** des bugs ou des manques dans la documentation
+3. **Soumettre** des pull requests
+4. **Écrire** des exemples ou des tutoriels
+5. **Rejoindre** le serveur Discord (lien à venir)
+
+---
+
+## Licence
+
+Open Source – voir le fichier [LICENSE](LICENSE).
+
+---
+
+*Déployez, Sécurisez, Encaissez. Beba.*

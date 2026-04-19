@@ -2,7 +2,7 @@ package sse
 
 import (
 	"context"
-	"http-server/processor"
+	"beba/processor"
 	"testing"
 	"time"
 

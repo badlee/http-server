@@ -97,7 +97,7 @@ func ParseFlags() (*AppConfig, error) {
 
 func parseFlagsArgs(args []string) (*AppConfig, error) {
 	cfg := &AppConfig{}
-	flagSet := pflag.NewFlagSet("http-server", pflag.ContinueOnError)
+	flagSet := pflag.NewFlagSet("beba", pflag.ContinueOnError)
 	flagSet.Usage = func() {} // On gère l'affichage nous-mêmes
 
 	// durRefs : champs time.Duration — flag int intermédiaire à convertir post-parse

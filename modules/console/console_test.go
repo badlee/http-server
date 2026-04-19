@@ -1,7 +1,7 @@
 package console
 
 import (
-	"http-server/processor"
+	"beba/processor"
 	"strings"
 	"testing"
 )

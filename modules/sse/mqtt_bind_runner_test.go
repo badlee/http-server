@@ -7,9 +7,9 @@ import (
 	"testing"
 	"time"
 
-	"http-server/modules/binder"
-	"http-server/modules/security"
-	"http-server/plugins/config"
+	"beba/modules/binder"
+	"beba/modules/security"
+	"beba/plugins/config"
 
 	mqtt "github.com/eclipse/paho.mqtt.golang"
 )

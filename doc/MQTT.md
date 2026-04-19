@@ -20,7 +20,7 @@ MQTT is accessible via:
 ---
 
 ## 🏗️ Security Interoperability
-Parce que `http-server` utilise un modèle de défense en profondeur, le **Broker MQTT** est protégé par la **couche Sentinel (L1-L4)** avant même que le premier paquet MQTT ne soit parsé.
+Parce que `beba` utilise un modèle de défense en profondeur, le **Broker MQTT** est protégé par la **couche Sentinel (L1-L4)** avant même que le premier paquet MQTT ne soit parsé.
 - **Déni de Connexion** : Les IPs bloquées ou les pays restreints par GeoIP sont rejetés dès l'étape `net.Accept`.
 - **Mitigation DDoS** : La directive `CONNECTION RATE` empêche le broker d'être submergé par des tentatives de `CONNECT` rapides.
 

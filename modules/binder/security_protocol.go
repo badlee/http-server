@@ -2,13 +2,13 @@ package binder
 
 import (
 	"fmt"
-	"http-server/plugins/httpserver"
+	"beba/plugins/httpserver"
 	"net"
 	"strconv"
 	"strings"
 	"time"
 
-	"http-server/modules/security"
+	"beba/modules/security"
 
 	"golang.org/x/text/cases"
 	"golang.org/x/text/language"

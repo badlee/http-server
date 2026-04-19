@@ -115,8 +115,8 @@ import (
 	"path/filepath"
 	"strings"
 
-	"http-server/modules"
-	"http-server/processor"
+	"beba/modules"
+	"beba/processor"
 
 	"github.com/dop251/goja"
 )

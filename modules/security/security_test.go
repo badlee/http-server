@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	"http-server/plugins/httpserver"
+	"beba/plugins/httpserver"
 
 	olc "github.com/google/open-location-code/go"
 	"github.com/paulmach/orb"

@@ -86,7 +86,7 @@ func New(cfg Config) *HTTP {
 
 	name := cfg.AppName
 	if name == "" {
-		name = "http-server"
+		name = "beba"
 		cfg.AppName = name
 	}
 

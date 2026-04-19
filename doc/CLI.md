@@ -6,17 +6,17 @@ The HTTP Server comes with a versatile CLI to serve files, process templates, an
 
 Serving the current directory:
 ```bash
-./http-server
+./beba
 ```
 
 Serving a specific directory:
 ```bash
-./http-server ./public
+./beba ./public
 ```
 
 Serving virtual hosts from a directory:
 ```bash
-./http-server ./vhosts --vhosts
+./beba ./vhosts --vhosts
 ```
 
 ## Options
@@ -91,7 +91,7 @@ The `test` subcommand allows you to render a template and validate its output wi
 
 ### Usage
 ```bash
-./http-server test [file] [options]
+./beba test [file] [options]
 ```
 
 ## Multi-Process Isolation
@@ -143,12 +143,12 @@ END HTTPS
 ### Examples
 Check if the title contains "Home":
 ```bash
-./http-server test index.html --find "title" --match "/Home/"
+./beba test index.html --find "title" --match "/Home/"
 ```
 
 Check if a price value is correct using JS:
 ```bash
-./http-server test product.html --find ".price" --match "text == '$19.99'"
+./beba test product.html --find ".price" --match "text == '$19.99'"
 ```
 
 ### Log Redirection

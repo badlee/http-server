@@ -1,4 +1,4 @@
-module http-server/plugins/require
+module beba/plugins/require
 
 go 1.25.5
 

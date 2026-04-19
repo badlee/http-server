@@ -9,11 +9,12 @@ import (
 	"fmt"
 	"log"
 
-	"http-server/modules/crud"
-	"http-server/modules/sse"
-	"http-server/plugins/httpserver"
-	"http-server/plugins/js"
-	"http-server/processor"
+	"beba/modules/crud"
+	_ "beba/modules/pdf"
+	"beba/modules/sse"
+	"beba/plugins/httpserver"
+	"beba/plugins/js"
+	"beba/processor"
 	"net"
 	"os"
 	"path/filepath"
@@ -41,9 +42,14 @@ import (
 	"github.com/gofiber/fiber/v3/middleware/static"
 	"github.com/gofiber/fiber/v3/middleware/timeout"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
+	gotcpdf "github.com/tecnickcom/go-tcpdf"
+	"github.com/tecnickcom/go-tcpdf/classobjects"
+	"github.com/tecnickcom/go-tcpdf/page"
 	"github.com/valyala/fasthttp"
 	"golang.org/x/crypto/acme/autocert"
 )
+
+var pdfNameRegex = regexp.MustCompile(`[^a-zA-Z0-9-_\.]`)
 
 // ─────────────────────────────────────────────────────────────────────────────
 // HTTPDirective
@@ -531,6 +537,96 @@ func NewHTTPDirective(config *DirectiveConfig) *HTTPDirective {
 						Scheme:      scheme,
 						TTLOverride: ttlStr,
 					}))
+				case "PDF":
+					handlers = append(handlers, func(c fiber.Ctx) error {
+						err := c.Next()
+						if err != nil {
+							return err
+						}
+						body := c.Response().Body()
+						if len(body) == 0 {
+							return nil
+						}
+						// Reset body and set headers
+						c.Response().ResetBody()
+						c.Type("pdf")
+
+						cfg := classobjects.DefaultConfig()
+						if mw.Args.Has("unit") {
+							cfg.Unit = mw.Args.Get("unit")
+						}
+						if mw.Args.Has("format") {
+							cfg.Format = mw.Args.Get("format")
+						}
+						if mw.Args.Has("orientation") {
+							cfg.Orientation = page.Orientation(mw.Args.Get("orientation"))
+						}
+						if mw.Args.Has("unicode") {
+							cfg.Unicode = isTrue(mw.Args.Get("unicode"))
+						}
+						if mw.Args.Has("encoding") {
+							cfg.Encoding = mw.Args.Get("encoding")
+						}
+						if mw.Args.Has("font-subset") {
+							cfg.SubsetFonts = isTrue(mw.Args.Get("font-subset"))
+						}
+
+						pdf, err := gotcpdf.New(cfg)
+						if err != nil {
+							return c.Status(500).SendString("PDF Error: " + err.Error())
+						}
+
+						// Metadata
+						if mw.Args.Has("creator") {
+							pdf.SetCreator(mw.Args.Get("creator"))
+						}
+						if mw.Args.Has("producer") {
+							pdf.SetProducer(mw.Args.Get("producer"))
+						}
+						if mw.Args.Has("author") {
+							pdf.SetAuthor(mw.Args.Get("author"))
+						}
+						if mw.Args.Has("title") {
+							pdf.SetTitle(mw.Args.Get("title"))
+						}
+						if mw.Args.Has("subject") {
+							pdf.SetSubject(mw.Args.Get("subject"))
+						}
+						if mw.Args.Has("keywords") {
+							pdf.SetKeywords(mw.Args.Get("keywords"))
+						}
+						if mw.Args.Has("pdfa") && isTrue(mw.Args.Get("pdfa")) {
+							pdf.Meta.PDFMode = "pdfa1"
+						}
+
+						// Font
+						family := mw.Args.Get("font-family", "helvetica")
+						style := mw.Args.Get("font-style", "")
+						size, _ := strconv.ParseFloat(mw.Args.Get("font-size", "12"), 64)
+						if mw.Args.Has("font-file") {
+							// Load custom font if needed (logic placeholder for now)
+						}
+
+						pdf.AddPage()
+						pdf.SetFont(family, style, size)
+						pdf.WriteHTML(string(body), true, false)
+
+						name := c.Path()
+						name = strings.TrimPrefix(name, "/")
+						paths := strings.Split(name, "/")
+						name = paths[len(paths)-1]
+						if len(name) == 0 {
+							name = "document"
+						}
+						name = pdfNameRegex.ReplaceAllString(name, "_")
+						name = mw.Args.Get("name", name)
+						if !strings.HasSuffix(strings.ToLower(name), ".pdf") {
+							name += ".pdf"
+						}
+						c.Set("Content-Disposition", fmt.Sprintf(`attachment; filename="%s"`, name))
+
+						return pdf.Output(c.Response().BodyWriter())
+					})
 				}
 			}
 

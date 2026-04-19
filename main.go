@@ -28,11 +28,11 @@ import (
 	"github.com/gofiber/fiber/v3/middleware/static"
 	"github.com/spf13/pflag"
 
-	"http-server/modules/binder"
-	"http-server/modules/sse"
-	appconfig "http-server/plugins/config"
-	"http-server/plugins/httpserver"
-	"http-server/processor"
+	"beba/modules/binder"
+	"beba/modules/sse"
+	appconfig "beba/plugins/config"
+	"beba/plugins/httpserver"
+	"beba/processor"
 )
 
 // TODO: add fs modules
@@ -149,7 +149,7 @@ func main() {
 	processor.SetVMConfig(cfg)
 
 	// Détection mode child (spawné par le master vhost)
-	isChild := os.Getenv("HTTP_SERVER_VHOST_CHILD") == "1"
+	isChild := os.Getenv("BEBA_VHOST_CHILD") == "1"
 
 	// Sous-commandes
 
@@ -164,7 +164,7 @@ func main() {
 		}
 		exit()
 	} else if !isChild && len(args) > 0 && args[0] == "proxy" {
-		// http-server proxy --proto TCP --port 1234 --workers 'JSON'
+		// beba proxy --proto TCP --port 1234 --workers 'JSON'
 		proto := ""
 		port := 0
 		workersJSON := ""
@@ -381,7 +381,7 @@ func main() {
 			childArgs = append(childArgs, configToChildArgs()...)
 
 			cmd := exec.Command(os.Args[0], childArgs...)
-			cmd.Env = append(os.Environ(), "HTTP_SERVER_VHOST_CHILD=1")
+			cmd.Env = append(os.Environ(), "BEBA_VHOST_CHILD=1")
 			cmd.Stdout = globalStdout
 			cmd.Stderr = globalStderr
 			if err := cmd.Start(); err != nil {
@@ -446,7 +446,7 @@ func main() {
 	}
 
 	app := httpserver.New(httpserver.Config{
-		AppName:      "http-server",
+		AppName:      "beba",
 		Stdout:       globalStdout,
 		Stderr:       globalStderr,
 		ReadTimeout:  cfg.ReadTimeout,
@@ -583,8 +583,8 @@ func main() {
 		if cfg.HTTPS {
 			schema = "https"
 		}
-		fmt.Printf("Starting up http-server, serving %s through %s\n\n", root, schema)
-		fmt.Println("http-server settings:")
+		fmt.Printf("Starting up beba, serving %s through %s\n\n", root, schema)
+		fmt.Println("beba settings:")
 		fmt.Printf("\tCORS: %s\n", boolToStr(cfg.CORS, "enabled", "disabled"))
 		fmt.Printf("\tCache: %d seconds\n", cfg.CacheTime)
 		fmt.Printf("\tRead Timeout: %s\n", cfg.ReadTimeout)
@@ -844,11 +844,11 @@ func getSocketNetwork(path string) string {
 }
 
 func getInternalSocketPath(index int) string {
-	return normalizeSocketPath(filepath.Join(os.TempDir(), fmt.Sprintf("http-server-%d.sock", index)))
+	return normalizeSocketPath(filepath.Join(os.TempDir(), fmt.Sprintf("beba-%d.sock", index)))
 }
 
 func getControlSocketPath(index int) string {
-	return normalizeSocketPath(filepath.Join(os.TempDir(), fmt.Sprintf("http-server-%d-control.sock", index)))
+	return normalizeSocketPath(filepath.Join(os.TempDir(), fmt.Sprintf("beba-%d-control.sock", index)))
 }
 
 func getAvailableIPs(bindAddr string) []string {

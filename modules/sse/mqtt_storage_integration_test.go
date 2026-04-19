@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	"http-server/modules/db"
+	"beba/modules/db"
 	paho "github.com/eclipse/paho.mqtt.golang"
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"

@@ -8,7 +8,7 @@ import (
 	"strings"
 	"testing"
 
-	"http-server/plugins/config"
+	"beba/plugins/config"
 )
 
 // Helper parser pour http.bind (similaire à celui de mail_protocol_test.go)

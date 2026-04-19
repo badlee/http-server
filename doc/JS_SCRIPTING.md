@@ -4,6 +4,8 @@ The HTTP Server allows executing server-side JavaScript directly within your HTM
 
 ## Special Tags
 
+> [!CAUTION] Seules les variables declare avec var sont exposees au moteur de template.
+
 ### `<?js ... ?>`
 Executes JavaScript code. Does not output anything to the page.
 
@@ -38,20 +40,35 @@ Executes a block of JS code or an external script file.
 
 ---
 
-## Global Objects & Functions
+## Global Scope & Injected Objects
 
-The following objects and functions are available in the server-side JS environment:
+The server-side JavaScript environment provides two types of global access:
+1. **Built-in Globals**: Always available (e.g., `console`, `fetch`, `require`).
+2. **Dynamic Injections**: Objects like `database`, `mail`, or `payment` are injected into the global scope **only if** their corresponding protocol directive is defined in the server's `.bind` configuration.
+
+### Dynamic Injection Rules
+
+| Protocol Directive | Global Object | Description |
+| :--- | :--- | :--- |
+| **`DATABASE`** | `database` | Unified access to connections and CRUD operations. |
+| **`MAIL`** | `mail` | Advanced mailing engine (SMTP/API) with template support. |
+| **`PAYMENT`** | `payment` | Unified payment integration (Stripe, PayPal, Crypto). |
+
+> [!IMPORTANT]
+> **Variable Naming via `NAME`**: When a directive includes a `NAME` instruction (e.g., `DATABASE ... NAME myapi`), the server automatically creates a **global variable** with that name (after sanitization) pointing directly to that instance.
+
+### Built-in Global Registry
 
 | Object | Description |
-|--------|-------------|
-| `db` | access to the [Database Module](DATABASE.md) |
-| `require(path)` | Load standard modules or local JS files |
-| `console` | Standard console for logging to terminal/log files |
-| `sse` | Access to the Server-Sent Events & WebSocket high-performance Hub |
-| `include(file)` | Process and include another template file |
-| `print(arg)` | Append data to the output buffer |
-| `cookies` | Access and modify request cookies |
-| `settings` | Access to global configuration defined via `SET` in `.bind` |
+| :--- | :--- |
+| `require(path)` | Load standard modules, Native Go modules, or local JS files. |
+| `console` | Standard console for logging to terminal and system logs. |
+| `fetch` | Standard Web Fetch API for HTTP/HTTPS requests. |
+| `sse` | Access to the high-performance real-time Hub. |
+| `cookies` | Managed access to the current request's cookies. |
+| `settings` | Access to global configuration defined via `SET` in `.bind`. |
+| `include(file)`| Process and include another template file. |
+| `print(arg)` | Append data directly to the output buffer. |
 
 ### `cookies` Methods
 - `get(name)`: Returns a cookie value.
@@ -100,296 +117,237 @@ You can use `require` to load local modules. The server looks for modules in:
 4. `node_modules/`
 5. `js_modules/`
 
+## PDF Generation Module (`pdf`)
+
+The `pdf` module allows creating high-quality PDF documents directly from your server-side scripts. It supports vector graphics, images, and HTML rendering.
+
+### Basic Example
 ```javascript
+const pdf = require('pdf');
 
----
-
-## Database Module (JS)
-
-The `db` module provides a Mongoose-like interface for managing relational databases (SQL). It allows you to define schemas, models, and perform CRUD operations with a syntax familiar to Node.js developers.
-
-### Connection
-
-The module supports multiple database systems via connection URLs:
-
-```javascript
-const db = require('db');
-
-// SQLite
-const conn = db.connect('sqlite:///data.db');
-
-// In-Memory (SQLite)
-const memoryConn = db.connect(':memory:');
-
-// PostgreSQL
-const pgConn = db.connect('postgres://user:pass@localhost:5432/mydb');
-
-// MySQL
-const mysqlConn = db.connect('mysql://user:pass@localhost:3306/mydb');
-```
-
-### Schemas
-
-A schema defines the structure of documents in a collection (table).
-
-```javascript
-const userSchema = new conn.Schema({
-    name: { type: 'string', required: true },
-    email: { type: 'string', unique: true },
-    age: 'number',
-    roles: 'array'
+const doc = pdf.TCPDF({
+    title: "My Report",
+    orientation: "P",
+    format: "A4"
 });
 
-// Virtuals (Getters/Setters)
-userSchema.virtual('fullName').get(function() {
-    return this.firstName + ' ' + this.lastName;
-});
+doc.AddPage();
+doc.SetFont("helvetica", "B", 18);
+doc.Cell(0, 15, "Automated Report", 0, 1, "C");
 
-// Middleware (Hooks)
-userSchema.pre('save', function() {
-    console.log('Saving ' + this.name);
-});
+doc.SetFont("helvetica", "", 11);
+doc.WriteHTML("<p>This document was <b>generated</b> automatically.</p>", true, false);
 
-// Instance Methods
-userSchema.methods.sayHello = function() {
-    return "Hello, I am " + this.name;
-};
-
-// Static Methods
-userSchema.statics.findByEmail = function(email) {
-    return this.findOne({ email: email });
-};
+doc.SavePDF("report.pdf");
 ```
 
-### Models
+### Reference
+- **`AddPage()`**: Creates a new page.
+- **`SetFont(family, style, size)`**: Changes the font. Style can be `B` (bold), `I` (italic), `U` (underline).
+- **`WriteHTML(html, ln, fill)`**: Renders a subset of HTML tags.
+- **`Cell(w, h, txt, ...)`**: Prints a rectangular area with text.
+- **`Image(path, x, y, w, h, type)`**: Inserts an image from the filesystem.
+- **`SetTextColor(r, g, b)`**: Sets the drawing color for text (RGB 0-255).
+- **`GetOutPDFString()`**: Returns the raw PDF content for streaming or processing.
 
-Models are constructors compiled from schema definitions.
+---
+
+## Core Internal Modules
+
+The environment provides several internal modules. Some are available as **Globals** (see above), while others must be explicitly loaded using **`require()`**.
+
+### 📦 Quick Reference Table
+
+| Module | Type | Access | Description |
+| :--- | :--- | :--- | :--- |
+| **Console** | Built-in | Global | Core logging interface. |
+| **Web Fetch** | Built-in | Global | Standard HTTP/HTTPS requests. |
+| **Database** | **Conditional** | Global / `db` | Unified ORM and CRUD engine. |
+| **Mail** | **Conditional** | Global | SMTP and Mail-API bridge. |
+| **Payment** | **Conditional** | Global | Integrated payment gateways. |
+| **File System** | Native | `fs` | Native file operations (Promise compatible). |
+| **Path** | Native | `path` | Cross-platform path utilities. |
+| **PDF** | Native | `pdf` | High-fidelity PDF generation (TCPDF). |
+| **Storage** | Native | `storage` | SQLite backed sessions and KV cache. |
+| **DTP** | Native | `dtp` | Device Transfer Protocol client. |
+
+---
+
+## 🌍 Global & Injected Objects Details
+
+### `database` (Global)
+In JavaScript, all database and CRUD features are accessed via the `database` global object. This object is injected if at least one `DATABASE` directive is defined.
 
 ```javascript
-const User = conn.model('User', userSchema);
-
-// Create a document
-const newUser = new User({ name: 'Alice', age: 30 });
-newUser.save();
-
-// Direct creation
-User.create({ name: 'Bob', age: 25 });
-```
-
-### Queries
-
-The module supports query chaining similar to Mongoose.
-
-```javascript
-// Find with filters
-User.find({ age: { $gt: 18 } })
-    .sort('-age')
-    .limit(10)
-    .select('name email')
-    .exec()
-    .then(users => {
-        console.log(users);
-    });
-
-// findOne
-const user = await User.findOne({ email: 'alice@example.com' });
-
-// Using custom static methods
-const userByEmail = await User.findByEmail('alice@example.com');
-```
-
-#### Execution Methods
-- `.exec()`: Directly returns results (blocking for the current script).
-- `await query`: Query objects are "thenables", allowing direct use of `await` or `.then()`.
-
-### Supported Operators
-
-#### Comparison Operators
-- `$eq`: Equality (optional if direct value).
-- `$gt`, `$gte`: Greater than (or equal).
-- `$lt`, `$lte`: Less than (or equal).
-- `$ne`: Not equal.
-- `$in`, `$nin`: Included (or not) in a list.
-
-#### Logical Operators
-- `$or`: OR.
-- `$and`: AND.
-- `$nor`: NOR.
-- `$not`: NOT.
-
-#### Element Operators
-- `$exists`: Checks if a field is present (non-NULL).
-- `$type`: Checks data type (via `typeof()` in SQLite).
-
-#### Evaluation Operators
-- `$mod`: Modulo.
-- `$regex`: Regular expression (driver dependent).
-- `$where`: Raw SQL expression.
-
-#### Array Operators (SQL Adapted)
-- `$all`: Must contain all specified values.
-- `$size`: Checks the number of elements in the list.
-
-### Documents
-
-Model instances represent documents synchronized in real-time with the internal engine.
-
-```javascript
-const user = await User.findOne({ name: 'Alice' });
-
-// Immediate sync between properties and methods
-user.name = 'Smith'; 
-user.set('age', 31); 
-
-// Save and Remove
-await user.save();
-await user.remove();
-```
-```
-# Protocol `DATABASE` — DSL Reference
-
-The `DATABASE` protocol unifies raw database connectivity and high-level CRUD/Auth features. It allows you to define a complete backend (namespaces, schemas, documents, users, roles, JWT + OAuth2 auth) directly in your `.bind` file.
-
-## Principle
-
-The `DATABASE` directive establishes a connection to a database and optionally configures a REST API and an Admin UI. 
-To expose the high-level API over HTTP, you must attach the instance to an `HTTP` server using the `CRUD [name] [prefix]` directive.
-
-> [!NOTE]
-> Inside the `HTTP` block, the directive is still named `CRUD` for historical/mounting reasons, while the top-level block is now exclusively `DATABASE`.
-
-```bind
-DATABASE 'postgres://user:pass@localhost/mydb' [default]
-    NAME myapi
-    // schema, auth, roles...
-END DATABASE
-
-HTTP :8080
-    CRUD myapi /api          // Mount the "myapi" instance on /api
-END HTTP
-```
-
----
-
-## Directives
-
-### NAME
-```bind
-NAME myapi
-```
-Identifier for the instance. Used for mounting in `HTTP` blocks and accessing via `database.connection("name_of_crud")` or `database.default` in JS.
-
-### SECRET
-```bind
-SECRET "your-jwt-secret"
-```
-JWT signature key. Defaults to `AppConfig.SecretKey` if omitted.
-
----
-
-### AUTH — Root Authentication
-At least one `AUTH` directive is **mandatory** for high-level administration. Root accounts have access to all namespaces.
-
-```bind
-AUTH USER root    "$2a$10$..."   // bcrypt or clear text
-AUTH CSV          "admins.csv"          // columns: username;password
-AUTH JSON         "admins.json"         // { "username": "password" }
-AUTH BEGIN
-    if (user === "root" && checkPwd("secret")) allow()
-    else reject("unauthorized")
-END AUTH
-```
-
----
-
-### OAUTH2 DEFINE — OAuth2 Providers
-```bind
-OAUTH2 google DEFINE
-    CLIENTID     "your-client-id"
-    CLIENTSECRET "your-secret"
-    REDIRECTURL  "https://myapp.com/api/auth/google/callback"
-    ENDPOINT     "https://accounts.google.com/o/oauth2/v2/auth"
-    TOKENURL     "https://oauth2.googleapis.com/token"
-    USERINFOURL  "https://www.googleapis.com/oauth2/v3/userinfo"
-    SCOPE        "openid"
-    SCOPE        "email"
-    SCOPE        "profile"
-END OAUTH2
-```
-
----
-
-### NAMESPACE DEFINE
-Namespaces provide isolation for your data and users.
-
-```bind
-NAMESPACE global DEFINE [default auth=password,google]
-    HOOK onRead BEGIN
-        if (!user) reject("authentication required")
-    END HOOK
-END NAMESPACE
-```
-
----
-
-### ROLE DEFINE
-```bind
-ROLE admin DEFINE [namespace=global]
-    PERMISSION * [actions=*]
-END ROLE
-```
-
----
-
-### SCHEMA DEFINE
-Defines the structure of documents (tables).
-
-```bind
-SCHEMA products DEFINE [namespace=global icon=box color=#3B82F6 softDelete=true]
-    FIELD name     string  [required]
-    FIELD price    number  [default=0]
-    FIELD tags     array
-
-    HOOK onRead BEGIN
-        if (doc.price < 0) modify({ ...doc, price: 0 })
-    END HOOK
-END SCHEMA
-```
-
----
-
-## JavaScript API — `database`
-
-In JavaScript, all database and CRUD features are accessed via the `database`'s global object.
-
-```js
-const db = database.connection("name_of_crud") 
-// or default database : database.default
+const db = database.connection("my_inventory") 
+// Or use the default connection:
+const db = database.default
 
 // -- High-level CRUD --
-const { token, user } = db.login("alice@e.com", { password: "secret" })
+const { token, user } = db.login("alice@email.com", { password: "secret" })
 const products = db.collection("products")
 const items = products.find({ price: { $gt: 100 } })
 
-// -- Raw GORM access (classic mode) --
+// -- Raw GORM access (Classic mode) --
 const User = db.model('User', { name: 'string' })
 const user = User.findOne({ name: 'Alice' })
 ```
 
+### `mail` (Global)
+Injected if the `MAIL` protocol is defined. Allows sending transactional emails and managing templates.
+- `mail.send(to, subject, body)`
+- `mail.template(name, data)`
+
+### `payment` (Global)
+Injected if the `PAYMENT` protocol is defined. Provides a unified interface for transaction management.
+- `payment.checkout(amount, options)`
+- `payment.verify(transactionID)`
+
+### `console`
+The standard logging interface. Output is redirected to the server's stdout/stderr.
+- `console.log(...args)`: Standard output.
+- `console.error(...args)`: Standard error.
+- `console.info(...args)`: Informational messages.
+- `console.warn(...args)`: Warning messages.
+
+### `cookies`
+- `get(name)`: Read a cookie value.
+- `set(name, value)`: Set a cookie.
+- `remove(name)`: Delete a cookie.
+- `has(name)`: Check for existence.
+
+### `fetch` (Web Fetch)
+A standard implementation of the Web Fetch API for server-to-server requests.
+```javascript
+const response = await fetch("https://api.example.com/data");
+const json = await response.json();
+```
+
+### `sse` (The Hub)
+Access to the high-performance communication Hub.
+- `publish(channel, data)`: Send a message to all subscribers.
+- `to(channel).publish(event, data)`: Send a targeted event.
+
 ---
 
-## Admin UI
+## 📘 Detailed API Reference
 
-The Admin UI is automatically mounted on `/{prefix}/_admin` (e.g., `/api/_admin`). Access requires a **Root account**.
+### 🗄️ Database & CRUD (`database`)
 
-### Customization
-```bind
-DATABASE 'sqlite://data.db' [default]
-    ADMIN DEFINE
-        PAGE "/metrics" [title="Metrics"] BEGIN
-            <h1>Server Metrics</h1>
-        END PAGE
-        LINK "https://docs.example.com" [title="Docs"]
-    END ADMIN
-END DATABASE
+The `database` global object provides unified access to both high-level CRUD operations and identity management. It is injected if at least one `DATABASE` directive is defined.
+
+#### **Authentication & Identity**
+- **`login(identity, options)`**: Authenticates a user.
+    - `identity`: Email or Username.
+    - `options`: `{ password, namespace }`.
+    - Returns: `{ token, user }` if successful.
+- **`logout(token)`**: Invalidates a session token.
+
+#### **Data Operations**
+- **`collection(schema_name)`**: Accesses a data collection (Table).
+    - `find(filter)`: Returns a query builder (supports `$gt`, `$in`, etc.).
+    - `create(data)`: Inserts a new document.
+    - `update(id, patch)`: Updates a document.
+    - `delete(id)`: Deletes (or trashes) a document.
+- **`ns(slug)`**: Switches the context to a specific **Namespace** (Multi-tenancy).
+    - Example: `database.ns("company_a").collection("products").find({})`
+
+#### **Management API**
+- **`schemas`**: `list()`, `get(id)`, `create(m)`, `update(id, patch)`, `delete(id)`, `move(schemaID, nsID)`.
+- **`namespaces`**: `list()`, `create(m)`.
+- **`users`**: `list()`, `create(m)`.
+- **`roles`**: `list()`.
+
+---
+
+### 📧 Mail Service (`mail`)
+
+Handles transactional emails through various providers (SMTP, Postmark, SendGrid, etc.). Injected if the `MAIL` protocol is defined.
+
+#### **Sending Emails**
+- **`send(message)`**: Sends an email via the default connection.
+    - **`message` Object**:
+        - `to`: Array of strings or single string.
+        - `cc` / `bcc`: Array of strings.
+        - `subject`: Email subject.
+        - `text`: Plain text body.
+        - `html`: HTML body.
+        - `attachments`: Array of `{ filename, data, contentType }`.
+
+#### **Templating**
+- **`template(name, data)`**: Renders a mail template defined in the `.bind` file.
+
+#### **Multi-Connection**
+- **`connect(url, name, options)`**: Dynamically creates a new connection.
+- **`connection(name)`**: Returns a specific connection instance.
+
+---
+
+### 💳 Payment Integration (`payment`)
+
+Unified API for gateways like Stripe, Flutterwave, CinetPay, and **x402 (Crypto)**. Injected if the `PAYMENT` protocol is defined.
+
+#### **Core Methods**
+- **`checkout(amount, options)`**: Redirect-based payment.
+    - `amount`: Number (base unit).
+    - `options`: `{ currency, orderId, email, phone, success_url, cancel_url }`.
+- **`charge(options)`**: Direct payment / Mobile Money prompt.
+- **`verify(transactionID)`**: Manual status check.
+- **`push(options)`**: Initiates a USSD Push (STK Push) for Mobile Money.
+    - Alias: **`ussd()`**.
+
+#### **Webhooks**
+Inside a `WEBHOOK` block in `.bind`:
+- **`request`**: Access `headers`, `body`, and `query`.
+- **`payment`**: Populated with transaction data after provider parsing.
+- **`verify(body, sig, secret)`**: Helper to validate signature.
+
+---
+
+## 🛠️ Native Modules (`require`)
+
+### `fs` (File System)
+Provides Node.js compatible file operations. Includes both Sync and Promise-based methods.
+- **Sync**: `readFileSync`, `writeFileSync`, `existsSync`, `readdirSync`, etc.
+- **Async**: `readFile`, `writeFile`, `readdir`, etc.
+
+```javascript
+const fs = require('fs');
+const config = JSON.parse(fs.readFileSync('./config.json'));
 ```
+
+### `path`
+Cross-platform path manipulation (Node.js compatible).
+- `join(...parts)`, `resolve(...parts)`, `basename(path)`, `dirname(path)`.
+
+### `dtp` (Device Transfer Protocol)
+Used for secure communication with hardware devices.
+
+```javascript
+const dtp = require('dtp');
+const client = dtp.newClient("127.0.0.1:5000", "device_01", "secret_key");
+
+client.on('connect', () => console.log("DTP Connected!"));
+client.on('data', (pkt) => {
+    console.log("Received: " + pkt.Payload); // pkt: { ID, Type, Subtype, Payload }
+});
+client.connect();
+```
+- **`sendData(subtype, payload, needAck?)`**: Send data to device.
+- **`ping()`**: Blocking ping-pong check (returns response).
+
+### `pdf`
+High-fidelity PDF generation (TCPDF).
+```javascript
+const pdf = require('pdf');
+const doc = pdf.TCPDF();
+doc.AddPage();
+doc.WriteHTML("<h1>Hello</h1>");
+doc.SavePDF("output.pdf");
+```
+
+### `storage`
+Persistent SQLite Key-Value storage.
+- `session(id)`: Store for specific session.
+- `shared`: Global persistent store.
+- `cache`: High-speed volatile store.

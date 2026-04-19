@@ -3,7 +3,7 @@ package db
 import (
 	"encoding/json"
 	"fmt"
-	"http-server/plugins/js"
+	"beba/plugins/js"
 	"reflect"
 	"strings"
 

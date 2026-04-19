@@ -174,10 +174,10 @@ import (
 	"strings"
 	"time"
 
-	"http-server/modules"
-	dbpkg "http-server/modules/db"
-	"http-server/plugins/httpserver"
-	"http-server/processor"
+	"beba/modules"
+	dbpkg "beba/modules/db"
+	"beba/plugins/httpserver"
+	"beba/processor"
 
 	"github.com/dop251/goja"
 	"github.com/gofiber/fiber/v3"

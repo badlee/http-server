@@ -1,6 +1,6 @@
 # Coding Rules & Standards - HTTP-Server
 
-Ce document définit les règles de codage et les standards à suivre pour le projet `http-server`. Il est destiné à la fois aux développeurs et aux agents IA intervenant sur le codebase.
+Ce document définit les règles de codage et les standards à suivre pour le projet `beba`. Il est destiné à la fois aux développeurs et aux agents IA intervenant sur le codebase.
 
 ### HTTP Engine & Middlewares
 

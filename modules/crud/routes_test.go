@@ -10,8 +10,8 @@ import (
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
 
-	"http-server/plugins/httpserver"
-	"http-server/types"
+	"beba/plugins/httpserver"
+	"beba/types"
 
 	_ "modernc.org/sqlite"
 )

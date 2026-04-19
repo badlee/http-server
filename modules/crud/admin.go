@@ -7,10 +7,10 @@ import (
 	"net/url"
 	"strings"
 
-	"http-server/modules/sse"
-	"http-server/plugins/httpserver"
-	"http-server/processor"
-	"http-server/types"
+	"beba/modules/sse"
+	"beba/plugins/httpserver"
+	"beba/processor"
+	"beba/types"
 
 	"github.com/gofiber/fiber/v3"
 	"gorm.io/gorm"

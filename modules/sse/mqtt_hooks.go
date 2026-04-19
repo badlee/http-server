@@ -8,8 +8,8 @@ import (
 	"path/filepath"
 	"strings"
 
-	"http-server/plugins/config"
-	"http-server/processor"
+	"beba/plugins/config"
+	"beba/processor"
 
 	mqtt "github.com/mochi-mqtt/server/v2"
 	"github.com/mochi-mqtt/server/v2/packets"

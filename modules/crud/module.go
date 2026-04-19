@@ -8,18 +8,18 @@ import (
 	"strings"
 	"time"
 
-	"http-server/modules"
-	"http-server/plugins/httpserver"
-	"http-server/processor"
-	"http-server/types"
+	"beba/modules"
+	"beba/plugins/httpserver"
+	"beba/processor"
+	"beba/types"
 
 	"github.com/dop251/goja"
 	"github.com/gofiber/fiber/v3"
 	"golang.org/x/crypto/bcrypt"
 	"gorm.io/gorm"
 
-	dbpkg "http-server/modules/db"
-	"http-server/modules/sse"
+	dbpkg "beba/modules/db"
+	"beba/modules/sse"
 )
 
 // ─────────────────────────────────────────────────────────────────────────────

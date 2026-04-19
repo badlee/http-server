@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"os"
 
-	"http-server/modules"
+	"beba/modules"
 
 	"github.com/dop251/goja"
 )

@@ -1,5 +1,5 @@
 SECURITY geo_advanced
-    GEOIP_DB "/Users/hobb/Dev/tools/http-server/data/GeoLite2-City.mmdb"
+    GEOIP_DB "/Users/hobb/Dev/tools/beba/data/GeoLite2-City.mmdb"
     
     # Block China
     CONNECTION DENY CN

@@ -5,7 +5,7 @@ package main
 import (
 	"encoding/json"
 	"fmt"
-	"http-server/plugins/config"
+	"beba/plugins/config"
 	"net"
 	"os"
 	"path/filepath"
@@ -350,7 +350,7 @@ func TestGetSocketNetwork(t *testing.T) {
 
 func TestGetInternalSocketPath(t *testing.T) {
 	got := getInternalSocketPath(0)
-	expected := filepath.Join(os.TempDir(), "http-server-0.sock")
+	expected := filepath.Join(os.TempDir(), "beba-0.sock")
 	if got != expected {
 		t.Errorf("expected %q, got %q", expected, got)
 	}
