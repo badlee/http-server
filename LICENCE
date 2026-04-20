@@ -1,0 +1,99 @@
+# Beba License – Version 1.0
+# Copyright (c) 2026 BADINGA BADINGA Ulrich Arthur (badlee)
+# Contact: badinga.ulrich@gmail.com
+# All rights reserved.
+
+## Definitions
+
+- **"Software"** : means the entire set of source code, binaries, documentation, and resources constituting the Beba project.
+- **"Author"** : means BADINGA BADINGA Ulrich Arthur (GitHub username: badlee), the creator and primary maintainer of the Software.
+- **"Derived Work"** : means any modification, adaptation, translation, extension, or any code that incorporates a substantial portion of the Software.
+- **"Commercial Use"** : means any use of the Software or a Derived Work in the context of a revenue-generating activity, including but not limited to: selling services, integration into a paid product, advertising, or providing a hosted service for a fee.
+- **"Cloud"** : means any Software-as-a-Service (SaaS), Platform-as-a-Service (PaaS), or Infrastructure-as-a-Service (IaaS) offering that allows third parties to use the Software without installing it locally.
+- **"Pull Request"** : means a submission of modifications to the official Software repository, made through the GitHub platform or any other platform designated by the Author.
+
+## 1. Granted Rights
+
+Subject to your compliance with the conditions below, the Author grants you the following rights:
+
+- **Personal and Internal Use** : You may use, run, and modify the Software for your own needs, in a non-commercial context.
+- **Non-Commercial Redistribution** : You may redistribute unmodified copies of the Software, provided you do not profit from such redistribution.
+- **Publication of Modifications** : You may publish your modifications to the Software, provided they are shared with the Author (see Section 2).
+
+## 2. Obligations
+
+### 2.1. Attribution
+
+Any use, redistribution, or publication of a Derived Work must include, in a visible manner:
+
+- The Author's name: **BADINGA BADINGA Ulrich Arthur (badlee)**
+- The Author's email: **badinga.ulrich@gmail.com**
+- The original Software name: **Beba**
+- A link to the official repository: `https://github.com/badlee/beba`
+- The notice: "This software is based on Beba (c) BADINGA BADINGA Ulrich Arthur"
+
+### 2.2. Sharing of Modifications
+
+Any modification, improvement, correction, or extension of the Software (Derived Work) that you distribute or make publicly accessible **must be communicated to the Author** via a Pull Request to the official repository, or by any other means designated by the Author (including email at badinga.ulrich@gmail.com).
+
+This obligation applies even if you do not wish your modification to be merged into the official version. The Author remains the sole judge of whether to accept or reject your contribution in future versions of the Software.
+
+### 2.3. License Preservation
+
+Any redistribution of the Software or a Derived Work must retain this License in its entirety, without modification.
+
+## 3. Restrictions
+
+### 3.1. Prohibition of Commercial Use
+
+Commercial Use of the Software or a Derived Work is strictly prohibited without the prior written consent of the Author.
+
+Prohibited activities include, but are not limited to:
+
+- Integrating the Software into a product or service sold to third parties.
+- Using the Software as a component of a paid SaaS offering.
+- Reselling services based on the Software (hosting, support, specialized consulting) without explicit authorization.
+
+### 3.2. Prohibition of Cloud Offerings Without Consent
+
+Using the Software or a Derived Work to create, operate, or maintain any form of Cloud offering (SaaS, PaaS, IaaS) that makes the Software available to third parties is strictly prohibited without the prior written consent of the Author.
+
+Prohibited activities include, but are not limited to:
+
+- Creating a hosting service for Beba applications.
+- Providing Beba as a managed service.
+- Integrating Beba into a public or private cloud platform accessible to third-party users.
+
+### 3.3. Prohibition of Notice Removal
+
+No copyright notice, attribution, or license condition may be removed or altered.
+
+## 4. Requesting Authorization
+
+Any request for authorization regarding Commercial Use or Cloud offerings must be submitted to the Author (BADINGA BADINGA Ulrich Arthur / badlee) via:
+
+- Email: **badinga.ulrich@gmail.com**
+- GitHub Issues: `https://github.com/badlee/beba/issues`
+- Or any other means designated by the Author
+
+The Author may grant authorizations subject to conditions (financial contribution, dedicated license, etc.) at their sole discretion.
+
+## 5. Disclaimer of Warranty
+
+The Software is provided "AS IS", without warranty of any kind, express or implied, including but not limited to the warranties of merchantability, fitness for a particular purpose, and non-infringement.
+
+In no event shall the Author be liable for any claim, damages, or other liability, whether in an action of contract, tort, or otherwise, arising from, out of, or in connection with the Software or the use or other dealings in the Software.
+
+## 6. Automatic Termination
+
+Any violation of the terms of this License automatically terminates your rights under this License. Upon termination, you must cease all use, distribution, and modification of the Software and destroy all copies in your possession.
+
+## 7. Miscellaneous
+
+- This License constitutes the entire agreement between you and the Author concerning the Software.
+- If any provision of this License is held to be unenforceable, the remaining provisions shall remain in full force and effect.
+- The failure of the Author to enforce any right or provision of this License shall not constitute a waiver of such right or provision.
+
+---
+
+**Beba – One Binary. Zero Complexity. Infinite Possibilities.**

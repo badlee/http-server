@@ -963,14 +963,12 @@ func validateAndInject(sockPath, proto string, port int, data []byte, rawConn ne
 	}
 	defer c.Close()
 
-	if strings.ToLower(proto) == "http" || strings.ToLower(proto) == "https" {
-		if uconn, ok := c.(*net.UnixConn); ok && rawConn != nil {
-			if fconn, ok := rawConn.(interface{ File() (*os.File, error) }); ok {
-				f, _ := fconn.File()
-				if f != nil {
-					defer f.Close()
-					rights := syscall.UnixRights(int(f.Fd()))
-					uconn.WriteMsgUnix([]byte{0}, rights, nil)
+	if (strings.ToLower(proto) == "http" || strings.ToLower(proto) == "https") && rawConn != nil {
+		if fconn, ok := rawConn.(interface{ File() (*os.File, error) }); ok {
+			f, _ := fconn.File()
+			if f != nil {
+				defer f.Close()
+				if err := sendFD(c, f); err == nil {
 					return true
 				}
 			}
@@ -1001,11 +999,6 @@ func validateAndInject(sockPath, proto string, port int, data []byte, rawConn ne
 
 	// If TCP, pass the FD
 	if strings.ToLower(proto) == "tcp" && rawConn != nil {
-		unixConn, ok := c.(*net.UnixConn)
-		if !ok {
-			return false
-		}
-
 		var f *os.File
 		// Get raw FD from the connection
 		switch tc := rawConn.(type) {
@@ -1021,9 +1014,7 @@ func validateAndInject(sockPath, proto string, port int, data []byte, rawConn ne
 		}
 		defer f.Close()
 
-		rights := syscall.UnixRights(int(f.Fd()))
-		_, _, err = unixConn.WriteMsgUnix([]byte{0}, rights, nil)
-		return err == nil
+		return sendFD(c, f) == nil
 	}
 
 	return true
@@ -1058,30 +1049,15 @@ func runControlSocket(cfg *appconfig.AppConfig, m *binder.Manager) {
 
 				// If it's a TCP vhost and we validated it, wait for the FD
 				if ok && strings.ToLower(req.Proto) == "tcp" {
-					unixConn, ok := c.(*net.UnixConn)
-					if !ok {
+					f, err := receiveFD(c)
+					if err != nil {
 						return
 					}
-					// Read FD
-					buf := make([]byte, 1) // dummy byte
-					oob := make([]byte, 32)
-					n, oobn, _, _, err := unixConn.ReadMsgUnix(buf, oob)
-					if err != nil || n == 0 {
-						return
-					}
-					msgs, err := syscall.ParseSocketControlMessage(oob[:oobn])
-					if err != nil || len(msgs) == 0 {
-						return
-					}
-					fds, err := syscall.ParseUnixRights(&msgs[0])
-					if err != nil || len(fds) == 0 {
-						return
-					}
-
-					fd := fds[0]
-					f := os.NewFile(uintptr(fd), "proxied-socket")
 					defer f.Close()
 					conn, err := net.FileConn(f)
+					if err != nil {
+						return
+					}
 					if err != nil {
 						return
 					}

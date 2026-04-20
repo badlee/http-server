@@ -3,7 +3,9 @@
 package main
 
 import (
+	"fmt"
 	"net"
+	"os"
 
 	"github.com/Microsoft/go-winio"
 )
@@ -20,4 +22,12 @@ func dialSocket(network, address string) (net.Conn, error) {
 		return winio.DialPipe(address, nil)
 	}
 	return net.Dial(network, address)
+}
+
+func sendFD(conn net.Conn, f *os.File) error {
+	return fmt.Errorf("FD passing not supported on windows")
+}
+
+func receiveFD(conn net.Conn) (*os.File, error) {
+	return nil, fmt.Errorf("FD passing not supported on windows")
 }

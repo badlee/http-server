@@ -1,3 +1,4 @@
+release
 node_modules
 .data
 data
@@ -21,3 +22,4 @@ beba
 package.json
 package-lock.json
 .DS_Store
+
