@@ -166,7 +166,11 @@ func mountRoutes(
 	// ── Namespaces ────────────────────────────────────────────────────────────
 
 	nsGroup := g.Group("/namespaces")
-
+	nsGroup.Get("", func(c fiber.Ctx) error {
+		var list []Namespace
+		db.Find(&list)
+		return c.JSON(list)
+	})
 	nsGroup.Get("/", func(c fiber.Ctx) error {
 		var list []Namespace
 		db.Find(&list)
@@ -220,9 +224,17 @@ func mountRoutes(
 	})
 
 	// ── Roles ─────────────────────────────────────────────────────────────────
-
 	roles := g.Group("/roles")
-
+	roles.Get("", func(c fiber.Ctx) error {
+		nsFilter := c.Query("namespace")
+		q := db.Model(&Role{})
+		if nsFilter != "" {
+			q = q.Where("namespace_id = ?", nsFilter)
+		}
+		var list []Role
+		q.Find(&list)
+		return c.JSON(list)
+	})
 	roles.Get("/", func(c fiber.Ctx) error {
 		nsFilter := c.Query("namespace")
 		q := db.Model(&Role{})
@@ -260,9 +272,21 @@ func mountRoutes(
 	})
 
 	// ── Users ─────────────────────────────────────────────────────────────────
-
 	users := g.Group("/users")
-
+	users.Get("", func(c fiber.Ctx) error {
+		nsFilter := c.Query("namespace")
+		q := db.Model(&User{})
+		if nsFilter != "" {
+			q = q.Where("namespace_id = ?", nsFilter)
+		}
+		var list []User
+		q.Find(&list)
+		out := make([]fiber.Map, len(list))
+		for i := range list {
+			out[i] = publicUser(&list[i])
+		}
+		return c.JSON(out)
+	})
 	users.Get("/", func(c fiber.Ctx) error {
 		nsFilter := c.Query("namespace")
 		q := db.Model(&User{})
@@ -307,9 +331,16 @@ func mountRoutes(
 	})
 
 	// ── Schemas ───────────────────────────────────────────────────────────────
-
 	schemas := g.Group("/schemas")
-
+	schemas.Get("", func(c fiber.Ctx) error {
+		q := db.Model(&CrudSchema{})
+		if r := rc(c); r != nil && !r.IsRoot {
+			q = q.Where("namespace_id = ?", r.Namespace.ID)
+		}
+		var list []CrudSchema
+		q.Find(&list)
+		return c.JSON(list)
+	})
 	schemas.Get("/", func(c fiber.Ctx) error {
 		q := db.Model(&CrudSchema{})
 		if r := rc(c); r != nil && !r.IsRoot {
@@ -318,6 +349,31 @@ func mountRoutes(
 		var list []CrudSchema
 		q.Find(&list)
 		return c.JSON(list)
+	})
+	schemas.Post("/", func(c fiber.Ctx) error {
+		var s CrudSchema
+		c.Bind().JSON(&s)
+		s.ID = newID()
+		if err := db.Create(&s).Error; err != nil {
+			return c.Status(500).JSON(fiber.Map{"error": err.Error()})
+		}
+		broadcastCRUD("create", "", "schemas", s.ID, s)
+		return c.Status(201).JSON(s)
+	})
+	schemas.Put("/:id", func(c fiber.Ctx) error {
+		var s CrudSchema
+		if err := db.First(&s, "id = ? OR slug = ?", c.Params("id"), c.Params("id")).Error; err != nil {
+			return c.Status(404).JSON(fiber.Map{"error": "not found"})
+		}
+		c.Bind().JSON(&s)
+		db.Save(&s)
+		broadcastCRUD("update", "", "schemas", s.ID, s)
+		return c.JSON(s)
+	})
+	schemas.Delete("/:id", func(c fiber.Ctx) error {
+		db.Delete(&CrudSchema{}, "id = ? OR slug = ?", c.Params("id"), c.Params("id"))
+		broadcastCRUD("delete", "", "schemas", c.Params("id"), nil)
+		return c.JSON(fiber.Map{"ok": true})
 	})
 	schemas.Get("/changes", func(c fiber.Ctx) error {
 		r := rc(c)

@@ -23,12 +23,13 @@ import "time"
 // Exemples :
 //
 //	Port    int           `flag:"port|p"  default:"8080"     desc:"Port to listen on"`
-//	Cert    string        `flag:"!cert"   default:"cert.pem" desc:"TLS certificate"`
+//	Cert    string        `flag:"!cert"   default:"" desc:"TLS certificate"`
 //	Socket  string        `flag:"socket|s"`
 //	Timeout time.Duration `flag:"timeout" default:"30"       desc:"Timeout (seconds)"`
 type AppConfig struct {
 	// Securite
 	SecretKey string `json:"secret_key"  yaml:"secret_key"  toml:"secret_key"  mapstructure:"secret_key"  env:"SECRET_KEY"  validate:"min=0" flag:"secret-key"  default:"120" desc:"Secret user for cookie's encription and session"`
+	DataDir   string `json:"data_dir"    yaml:"data_dir"    toml:"data_dir"    mapstructure:"data_dir"    env:"DATA_DIR"    flag:"data-dir"    default:".data"  desc:"Directory for persistent data"`
 
 	// ---- sources -------------------------------------------------------
 	ConfigFiles []string `json:"config_files,omitempty" yaml:"config_files,omitempty" toml:"config_files,omitempty" mapstructure:"config_files" env:"CONFIG_FILES" flag:"#config-file|c"   desc:"Config files (json/yaml/toml), comma-separated"`
@@ -72,9 +73,11 @@ type AppConfig struct {
 	ProxyURL string `json:"proxy,omitempty" yaml:"proxy,omitempty" toml:"proxy,omitempty" mapstructure:"proxy" env:"PROXY" flag:"proxy" desc:"Fallback reverse-proxy URL"`
 
 	// ---- TLS -----------------------------------------------------------
-	HTTPS bool   `json:"https" yaml:"https" toml:"https" mapstructure:"https" env:"HTTPS" flag:"#secure|S" default:"true" desc:"Enable HTTPS"`
-	Cert  string `json:"cert,omitempty" yaml:"cert,omitempty" toml:"cert,omitempty" mapstructure:"cert" env:"CERT" flag:"#cert" default:"cert.pem" desc:"TLS certificate file"`
-	Key   string `json:"key,omitempty" yaml:"key,omitempty" toml:"key,omitempty" mapstructure:"key" env:"KEY" flag:"#key" default:"key.pem" desc:"TLS private key file"`
+	HTTPS  bool   `json:"https" yaml:"https" toml:"https" mapstructure:"https" env:"HTTPS" flag:"#secure|S" default:"false" desc:"Enable HTTPS"`
+	Cert   string `json:"cert,omitempty" yaml:"cert,omitempty" toml:"cert,omitempty" mapstructure:"cert" env:"CERT" flag:"#cert" default:"" desc:"TLS certificate file"`
+	Key    string `json:"key,omitempty" yaml:"key,omitempty" toml:"key,omitempty" mapstructure:"key" env:"KEY" flag:"#key" default:"" desc:"TLS private key file"`
+	Domain string `json:"domain,omitempty" yaml:"domain,omitempty" toml:"domain,omitempty" mapstructure:"domain" env:"DOMAIN" flag:"#domain" default:"" desc:"Domain for ACME (Let's Encrypt)"`
+	Email  string `json:"email,omitempty" yaml:"email,omitempty" toml:"email,omitempty" mapstructure:"email" env:"EMAIL" flag:"#email" default:"" desc:"Email for ACME (Let's Encrypt)"`
 
 	// ---- robots --------------------------------------------------------
 	Robots     bool   `json:"robots" yaml:"robots" toml:"robots" mapstructure:"robots" env:"ROBOTS" flag:"robots-allowed|R" default:"true" desc:"Respond to /robots.txt"`
@@ -126,8 +129,10 @@ func DefaultConfig() *AppConfig {
 		Deflate: true,
 
 		CacheTime:  3600,
-		Cert:       "cert.pem",
-		Key:        "key.pem",
+		Cert:       "",
+		Key:        "",
+		Domain:     "",
+		Email:      "",
 		RobotsFile: "robots.txt",
 
 		ReadTimeout:  30 * time.Second,

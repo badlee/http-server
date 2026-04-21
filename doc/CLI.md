@@ -48,8 +48,8 @@ Serving virtual hosts from a directory:
 | `--cache` | | `3600` | Cache time (seconds) |
 | `--proxy` | | | Fallback proxy if file not found |
 | `--https` | | `false` | Enable HTTPS |
-| `--cert` | | `cert.pem`| Path to SSL certificate |
-| `--key` | | `key.pem` | Path to SSL key |
+| `--cert` | | | Path to SSL certificate |
+| `--key` | |  | Path to SSL key |
 | `--robots` | | `false` | Respond to `/robots.txt` using the file |
 | `--robots-file` | | `robots.txt`| The robots.txt file to serve |
 | `--read-timeout` | | `30` | Connection read timeout (seconds) (0=disabled) |

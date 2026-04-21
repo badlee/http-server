@@ -52,14 +52,7 @@ func Validate(cfg *AppConfig) error {
 	}
 
 	// Règles croisées (dépendances entre champs)
-	if cfg.HTTPS {
-		if cfg.Cert == "" {
-			ve.Errors = append(ve.Errors, "HTTPS=true requires Cert to be set")
-		}
-		if cfg.Key == "" {
-			ve.Errors = append(ve.Errors, "HTTPS=true requires Key to be set")
-		}
-	}
+	// On ne valide plus strictement Cert/Key ici car on a un fallback (ACME ou auto-signé)
 
 	if ve.HasErrors() {
 		return ve

@@ -48,6 +48,42 @@ func registerCrudInstance(name string, inst *CrudInstance, isDefault bool) {
 	}
 }
 
+// InitializeDefaultCRUD ensures the default database is connected and mounts a CRUD instance.
+func InitializeDefaultCRUD(app *httpserver.HTTP) error {
+	conn := dbpkg.GetConnection()
+	if conn == nil {
+		conn = dbpkg.EnsureDefaultDatabase()
+	}
+	if conn == nil {
+		return fmt.Errorf("failed to initialize default database for CRUD")
+	}
+
+	// Prepare CRUD instance
+	gormDB := conn.GetDB()
+	if err := Migrate(gormDB); err != nil {
+		return fmt.Errorf("default CRUD migrate: %w", err)
+	}
+	if err := Seed(gormDB); err != nil {
+		return fmt.Errorf("default CRUD seed: %w", err)
+	}
+
+	inst := &CrudInstance{
+		name:   "default",
+		db:     gormDB,
+		secret: "changeme", // Fallback secret
+		cfg:    &CrudDirectiveConfig{Name: "default"},
+	}
+
+	registerCrudInstance("default", inst, true)
+
+	// Mount API and Admin (MountOn already calls mountAdmin)
+	if err := MountOn(app, inst, "/api"); err != nil {
+		return fmt.Errorf("failed to mount default CRUD API: %w", err)
+	}
+
+	return nil
+}
+
 func GetCrudInstance(name ...string) *CrudInstance {
 	if len(name) == 0 || name[0] == "" {
 		return defaultCrudInstance

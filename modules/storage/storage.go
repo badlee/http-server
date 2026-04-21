@@ -9,6 +9,7 @@ import (
 	"path/filepath"
 	"reflect"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/dop251/goja"
@@ -749,35 +750,40 @@ func (s *Module) cleanupLoop(db *gorm.DB, tableName string) {
 	}
 }
 
+var storageInitialized sync.Once
+
+func Initialize(dataDir string) {
+	storageInitialized.Do(func() {
+		// Initialize GORM / SQLite
+		var err error
+		os.MkdirAll(dataDir, 0755)
+
+		persistentPath := filepath.Join(dataDir, "sessions.db")
+		persistentDB, err = gorm.Open(sqlite.New(sqlite.Config{DriverName: "sqlite", DSN: persistentPath}), &gorm.Config{
+			Logger: logger.Default.LogMode(logger.Warn),
+		})
+		if err != nil {
+			log.Printf("Failed to init persistent session DB: %v", err)
+		} else {
+			// WAL mode for concurrency
+			persistentDB.Exec("PRAGMA journal_mode = WAL")
+			persistentDB.AutoMigrate(&StorageItem{})
+			go (&Module{}).cleanupLoop(persistentDB, "session")
+		}
+
+		volatileDB, err = gorm.Open(sqlite.New(sqlite.Config{DriverName: "sqlite", DSN: ":memory:"}), &gorm.Config{
+			Logger: logger.Default.LogMode(logger.Warn),
+		})
+		if err != nil {
+			log.Printf("Failed to init volatile session DB: %v", err)
+		} else {
+			// WAL mode even for memory? memory default is fine.
+			volatileDB.AutoMigrate(&StorageItem{})
+			go (&Module{}).cleanupLoop(volatileDB, "volatile")
+		}
+	})
+}
+
 func init() {
-	// Initialize GORM / SQLite
-	var err error
-	dataDir := ".data"
-	os.MkdirAll(dataDir, 0755)
-
-	persistentPath := filepath.Join(dataDir, "sessions.db")
-	persistentDB, err = gorm.Open(sqlite.New(sqlite.Config{DriverName: "sqlite", DSN: persistentPath}), &gorm.Config{
-		Logger: logger.Default.LogMode(logger.Warn),
-	})
-	if err != nil {
-		log.Printf("Failed to init persistent session DB: %v", err)
-	} else {
-		// WAL mode for concurrency
-		persistentDB.Exec("PRAGMA journal_mode = WAL")
-		persistentDB.AutoMigrate(&StorageItem{})
-		go (&Module{}).cleanupLoop(persistentDB, "session")
-	}
-
-	volatileDB, err = gorm.Open(sqlite.New(sqlite.Config{DriverName: "sqlite", DSN: ":memory:"}), &gorm.Config{
-		Logger: logger.Default.LogMode(logger.Warn),
-	})
-	if err != nil {
-		log.Printf("Failed to init volatile session DB: %v", err)
-	} else {
-		// WAL mode even for memory? memory default is fine.
-		volatileDB.AutoMigrate(&StorageItem{})
-		go (&Module{}).cleanupLoop(volatileDB, "volatile")
-	}
-
 	modules.RegisterModule(&Module{})
 }

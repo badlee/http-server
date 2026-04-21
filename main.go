@@ -1,6 +1,7 @@
 package main
 
 import (
+	"crypto/tls"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -29,7 +30,9 @@ import (
 	"github.com/spf13/pflag"
 
 	"beba/modules/binder"
+	"beba/modules/crud"
 	"beba/modules/db"
+	"beba/modules/storage"
 	"beba/modules/sse"
 	appconfig "beba/plugins/config"
 	"beba/plugins/httpserver"
@@ -37,7 +40,6 @@ import (
 )
 
 var Version = "dev"
-
 
 // TODO: add fs modules
 // TODO: add fetch modules : http://, https://, ftp://, ftps://, sftp://, file:// (limited to the current directory)
@@ -92,7 +94,6 @@ func main() {
 		fmt.Printf("beba version %s\n", Version)
 		os.Exit(0)
 	}
-
 
 	// Fichiers de log — tracés pour flush/close propre à l'arrêt
 	var logFiles []*os.File
@@ -226,16 +227,29 @@ func main() {
 				exit(fmt.Errorf("Failed to get current directory: %v", err))
 			}
 		}
+		// Calculate data directory relative to root
+		// If cfg.DataDir was provided as relative path, it will now be relative to the new CWD
+		db.SetDefaultDataDir(cfg.DataDir)
+		storage.Initialize(cfg.DataDir)
+
 		root = "."
 		// .env déjà chargé par LoadConfig via LoadEnvFiles, mais on recharge
 		// depuis le répertoire courant après chdir pour les enfants vhost
 		if isChild {
 			appconfig.LoadEnvFiles(cfg.EnvFiles)
 		}
+	} else if cfg.VHosts {
+		// Master process in vhost mode - we don't want to initialize default DB/Storage here
+		// as it would create a .data folder in the vhosts root directory.
+		// However, if we need some global shared data, we could do it, but the user requested NOT to.
 	}
 
 	// S'assurer qu'il y a une base de données par défaut dans le répertoire racine ./
-	db.EnsureDefaultDatabase()
+	// This only runs in single mode or child mode now, because of the check above (db.SetDefaultDataDir is not called in master)
+	// Actually, EnsureDefaultDatabase can still be called, but we want it to be root-aware.
+	if !cfg.VHosts || isChild {
+		db.EnsureDefaultDatabase()
+	}
 
 	// -------------------- MODE BINDER --------------------
 	if len(cfg.BindFiles) > 0 {
@@ -468,6 +482,11 @@ func main() {
 		Secret:       cfg.SecretKey,
 	})
 
+	// Initialize default CRUD (API at /api, Admin at /api/_admin)
+	if err := crud.InitializeDefaultCRUD(app); err != nil {
+		log.Printf("Warning: failed to initialize default CRUD: %v", err)
+	}
+
 	// realtime SSE + WebSocket + Socket.IO + MQTT
 	realtime := app.Group("/api/realtime")
 	// sse handler
@@ -611,15 +630,23 @@ func main() {
 			boolToStr(!cfg.NoHtmx, "enabled", "disabled"))
 		fmt.Printf("\tRobots: %v\n", cfg.Robots)
 		fmt.Printf("\tProxy: %s\n", cfg.ProxyURL)
-		fmt.Printf("\tHTTPS: %v  Cert: %s\n", cfg.HTTPS, cfg.Cert)
+		fmt.Printf("\tHTTPS: %v ", cfg.HTTPS)
+		if cfg.HTTPS && cfg.Cert != "" && cfg.Key != "" {
+			fmt.Printf("Cert: %s Key: %s\n", cfg.Cert, cfg.Key)
+		} else if cfg.HTTPS && cfg.Domain != "" {
+			fmt.Printf("Domain: %s (let's encrypt)\n", cfg.Domain)
+		} else if cfg.HTTPS {
+			fmt.Printf("(self-signed)\n")
+		}
 		fmt.Printf("\tAddress: %s  Port: %d\n", cfg.Address, cfg.Port)
 		if cfg.Socket != "" {
 			fmt.Printf("\tSocket: %s\n", cfg.Socket)
 		}
+		fmt.Printf("\nUrls:\n")
 		for _, ip := range getAvailableIPs(cfg.Address) {
 			fmt.Printf("  %s://%s:%d\n", schema, ip, cfg.Port)
 		}
-		fmt.Println("Hit CTRL-C to stop the server")
+		fmt.Println("\n\nHit CTRL-C to stop the server")
 	}
 
 	listenAddr := fmt.Sprintf("%s:%d", cfg.Address, cfg.Port)
@@ -638,10 +665,22 @@ func main() {
 		}
 		exit(app.Listener(ln))
 	} else if cfg.HTTPS {
-		exit(app.Listen(listenAddr, fiber.ListenConfig{
-			CertFile:    cfg.Cert,
-			CertKeyFile: cfg.Key,
-		}))
+		if cfg.Cert != "" && cfg.Key != "" {
+			exit(app.Listen(listenAddr, fiber.ListenConfig{
+				CertFile:    cfg.Cert,
+				CertKeyFile: cfg.Key,
+			}))
+		} else {
+			tlsCfg, err := httpserver.GetTLSConfig(cfg)
+			if err != nil {
+				exit(fmt.Errorf("failed to setup HTTPS: %v", err))
+			}
+			ln, err := net.Listen("tcp", listenAddr)
+			if err != nil {
+				exit(fmt.Errorf("failed to listen on %s: %v", listenAddr, err))
+			}
+			exit(app.Listener(tls.NewListener(ln, tlsCfg)))
+		}
 	} else {
 		exit(app.Listen(listenAddr))
 	}

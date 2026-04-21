@@ -208,6 +208,12 @@ func (conn *Connection) GetConnections() map[string]*Connection {
 	return AllConnections
 }
 
+var DefaultDataDir string = ".data"
+
+func SetDefaultDataDir(path string) {
+	DefaultDataDir = path
+}
+
 var AllConnections map[string]*Connection = make(map[string]*Connection)
 var AllConnectionsMu sync.RWMutex
 
@@ -296,13 +302,13 @@ func EnsureDefaultDatabase() *Connection {
 		return conn // already exists
 	}
 
-	err := os.MkdirAll("./.data", 0755)
+	err := os.MkdirAll(DefaultDataDir, 0755)
 	if err != nil {
-		log.Printf("Failed to create ./.data directory for default database: %v", err)
+		log.Printf("Failed to create %s directory for default database: %v", DefaultDataDir, err)
 		return nil
 	}
 
-	gormDB, err := FromURL("sqlite://./.data/beba.db")
+	gormDB, err := FromURL(fmt.Sprintf("sqlite://%s/beba.db", DefaultDataDir))
 	if err != nil || gormDB == nil {
 		log.Printf("Failed to lazy load default database: %v", err)
 		return nil
@@ -310,5 +316,7 @@ func EnsureDefaultDatabase() *Connection {
 
 	conn = NewConnection(gormDB, DefaultConnName)
 	RegisterDefaultConnection(conn)
+
 	return conn
 }
+
