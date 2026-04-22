@@ -16,6 +16,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Production Mode Optimization**: When `--hot-reload=false`, the file cache is permanent (no TTL expiration, no cleanup goroutine) and no `fsnotify` watcher is started, minimizing resource usage.
 - **ProcessFile Cache Integration**: `processor.ProcessFile` transparently reads from the FsRouter cache (via `c.Locals("_fsrouter_cache")` interface) when available, with fallback to `os.ReadFile` for standalone usage.
 
+### Fixed
+- **FsRouter Test Suite**: Fixed 6 tests (`Export_WithSettings`, `404_CustomGoHandler`, `ErrorHandler_JS`, `ErrorHandler_Template`, `Settings_Template`, `Settings_JSHandler`) that panicked due to `app.Use(FsRouter(...))` unpacking the `(fiber.Handler, error)` tuple into Fiber's variadic `...any`, passing `nil` as a second handler. All tests now properly destructure the return value.
+
 ## [0.0.3] - 2026-04-22
 
 ### Added
