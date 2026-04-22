@@ -3,9 +3,16 @@ package auth
 import (
 	"context"
 	"errors"
+	"strings"
 	"sync"
+	"time"
 
 	"beba/types"
+	"gorm.io/driver/mysql"
+	"gorm.io/driver/postgres"
+	"gorm.io/driver/sqlite"
+	"gorm.io/gorm"
+	"gorm.io/gorm/logger"
 )
 
 var (
@@ -14,11 +21,19 @@ var (
 )
 
 type Manager struct {
-	name       string
-	secret     string
-	strategies []Strategy
-	clients    map[string]*OAuth2Client
-	mu         sync.RWMutex
+	name         string
+	secret       string
+	strategies   []Strategy
+	clients      map[string]*OAuth2Client
+	serverConfig *OAuth2ServerConfig
+	db           *gorm.DB
+	mu           sync.RWMutex
+}
+
+type AuthToken struct {
+	JTI       string    `gorm:"primaryKey"`
+	UserID    string    `gorm:"index"`
+	ExpiresAt time.Time `gorm:"index"`
 }
 
 func NewManager(name, secret string) *Manager {
@@ -37,6 +52,29 @@ func GetManager(name string) *Manager {
 	managersMu.RLock()
 	defer managersMu.RUnlock()
 	return managers[name]
+}
+
+func (m *Manager) initDB(dsn string) error {
+	var dialector gorm.Dialector
+	if strings.HasPrefix(dsn, "sqlite://") {
+		dialector = sqlite.Open(strings.TrimPrefix(dsn, "sqlite://"))
+	} else if strings.HasPrefix(dsn, "mysql://") {
+		dialector = mysql.Open(strings.TrimPrefix(dsn, "mysql://"))
+	} else if strings.HasPrefix(dsn, "postgres://") {
+		dialector = postgres.Open(strings.TrimPrefix(dsn, "postgres://"))
+	} else {
+		// Default to sqlite
+		dialector = sqlite.Open(dsn)
+	}
+
+	db, err := gorm.Open(dialector, &gorm.Config{
+		Logger: logger.Default.LogMode(logger.Warn),
+	})
+	if err != nil {
+		return err
+	}
+	m.db = db
+	return db.AutoMigrate(&AuthToken{})
 }
 
 func (m *Manager) AddStrategy(s Strategy) {

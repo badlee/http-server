@@ -57,8 +57,9 @@ Ce document définit les règles de codage et les standards à suivre pour le pr
 1. **Context-Aware**: Any `Strategy` implementation in `modules/auth` MUST take `context.Context` (or `fiber.Ctx` where applicable) to support session-based or token-based logic.
 2. **Centralization**: Always define authentication using the global `AUTH [name] DEFINE` block. Avoid inline `AUTH` directives inside protocols unless necessary for strict backward compatibility.
 3. **Hashing**: New passwords stored in local configurations (USER, CSV, File) MUST be validated using the built-in `CheckPassword` helper, which natively supports `{SHA512}`, `{BCRYPT}`, etc.
-4. **OAuth2 Integration**: External identities must be configured within the global AUTH block using `STRATEGY [name] DEFINE` and handled through the unified `/auth/callback/:strategy` route.
-5. **Escaping**: Binder variables and arguments MUST support multiple quote types (``,"",'') with backslash escaping.
+4. **OAuth2 Integration**: External identities must be configured within the global AUTH block using `STRATEGY [name] DEFINE`. Beba can act as a Provider via `SERVER DEFINE` generating stateless JWTs with database-backed JTI tracking.
+5. **JS API**: The unified authentication system MUST be exposed to JavaScript via `require('auth')`. This provides `authenticate()`, `generateToken()`, `validateToken()`, and `revokeToken()`, returning `null` on failure rather than throwing exceptions.
+6. **Escaping**: Binder variables and arguments MUST support multiple quote types (``,"",'') with backslash escaping.
 
 ### Security Constants
 

@@ -62,8 +62,9 @@ Gérez vos utilisateurs et identités externes avec une syntaxe déclarative glo
 - Sources locales : Fichiers JSON/YAML/TOML/CSV, utilisateurs statiques.
 - Logique custom : Authentification scriptable en JavaScript (`allow()` / `reject()`).
 - **OAuth2 Client** : Connexion via Google, GitHub, etc. (`STRATEGY`).
-- **OAuth2 Server** : Transformez Beba en fournisseur d'identité (`SERVER`).
-Montage automatique des APIs standard (`/auth/login`, `/auth/me`, `/auth/callback/:strategy`) sur vos routes.
+- **OAuth2 Server** : Transformez Beba en fournisseur d'identité avec des Access Tokens JWT sans état (`SERVER DEFINE`).
+- **API JS Unifiée** : Pilotez l'authentification et les JWT depuis vos scripts via `require('auth')`.
+Montage automatique des APIs standard (`/auth/login`, `/auth/me`, `/auth/callback/:strategy`, `/oauth2/*`) sur vos routes.
 
 ### Hub realtime massivement scalable
 Le cœur du système : un hub de messagerie haute performance capable de gérer **plus d'un million de clients simultanés**.

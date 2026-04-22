@@ -108,8 +108,9 @@ type parseContext struct {
 	// Stack for DEFINE groups
 	groupStack []*RouteConfig
 
-	currentAuth   *AuthManagerConfig
-	currentOAuth2 *OAuth2ClientConfig
+	currentAuth         *AuthManagerConfig
+	currentOAuth2       *OAuth2ClientConfig
+	currentOAuth2Server *OAuth2ServerConfig
 }
 
 type inlineTarget struct {
@@ -262,6 +263,15 @@ func (ctx *parseContext) handleEnd(toks []string, pl parsedLine) error {
 		return nil
 	}
 
+	// 7. Close SERVER inside AUTH
+	if ctx.currentOAuth2Server != nil && endKw == "SERVER" {
+		if ctx.currentAuth != nil {
+			ctx.currentAuth.Server = ctx.currentOAuth2Server
+		}
+		ctx.currentOAuth2Server = nil
+		return nil
+	}
+
 	return nil
 }
 
@@ -393,6 +403,10 @@ func (ctx *parseContext) handleInsideAuth(toks []string, pl parsedLine) error {
 		return ctx.handleInsideOAuth2(toks, pl)
 	}
 
+	if ctx.currentOAuth2Server != nil {
+		return ctx.handleInsideOAuth2Server(toks, pl)
+	}
+
 	switch cmd {
 	case "DATABASE":
 		if len(toks) > 1 {
@@ -457,7 +471,7 @@ func (ctx *parseContext) handleInsideAuth(toks []string, pl parsedLine) error {
 		}
 	case "SERVER":
 		if len(toks) >= 2 && strings.ToUpper(toks[1]) == "DEFINE" {
-			// Handle SERVER DEFINE
+			ctx.currentOAuth2Server = &OAuth2ServerConfig{}
 		}
 	}
 	return nil
@@ -481,6 +495,25 @@ func (ctx *parseContext) handleInsideOAuth2(toks []string, pl parsedLine) error 
 	case "SCOPE", "SCOPES":
 		if len(toks) > 1 {
 			ctx.currentOAuth2.Scopes = append(ctx.currentOAuth2.Scopes, strings.Trim(toks[1], "\"'`"))
+		}
+	}
+	return nil
+}
+
+func (ctx *parseContext) handleInsideOAuth2Server(toks []string, pl parsedLine) error {
+	cmd := strings.ToUpper(toks[0])
+	switch cmd {
+	case "TOKEN_EXPIRATION":
+		if len(toks) > 1 {
+			ctx.currentOAuth2Server.TokenExpiration = strings.Trim(toks[1], "\"'`")
+		}
+	case "ISSUER":
+		if len(toks) > 1 {
+			ctx.currentOAuth2Server.Issuer = strings.Trim(toks[1], "\"'`")
+		}
+	case "LOGIN":
+		if len(toks) > 1 {
+			ctx.currentOAuth2Server.LoginPath = strings.Trim(toks[1], "\"'`")
 		}
 	}
 	return nil

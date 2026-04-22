@@ -27,7 +27,7 @@ Welcome to the **beba** official documentation. This server is a high-speed, mul
 ## 🛡️ Security (Sentinel Architecture)
 
 - **[Security & WAF](SECURITY.md)**: Comprehensive guide on the 5-layer Sentinel defense, including Network Filtering (L1), Coraza WAF (L3), Bot Defense (L4), and Signed Auditing (L5).
-- **[Authentication](AUTH.md)**: Secure your routes with the Unified Global Identity Manager (`AUTH [name] DEFINE`), supporting local users, scripts, and OAuth2 Client/Provider capabilities.
+- **[Authentication](AUTH.md)**: Secure your routes with the Unified Global Identity Manager (`AUTH [name] DEFINE`), supporting local users, scripts, OAuth2 Client/Provider capabilities, and programmatic control via the `require('auth')` JS API.
 
 ---
 

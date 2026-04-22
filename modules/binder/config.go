@@ -365,6 +365,7 @@ type AuthConfig = auth.AuthConfig
 type AuthConfigs = auth.AuthConfigs
 type AuthManagerConfig = auth.AuthManagerConfig
 type OAuth2ClientConfig = auth.OAuth2ClientConfig
+type OAuth2ServerConfig = auth.OAuth2ServerConfig
 
 type AuthType = auth.AuthType
 

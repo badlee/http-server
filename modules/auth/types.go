@@ -70,7 +70,14 @@ type AuthManagerConfig struct {
 	Secret     string
 	Strategies AuthConfigs
 	Clients    []*OAuth2ClientConfig
+	Server     *OAuth2ServerConfig
 	BaseDir    string
+}
+
+type OAuth2ServerConfig struct {
+	TokenExpiration string // e.g. "1h"
+	Issuer          string
+	LoginPath       string // Filepath to a custom login HTML
 }
 
 type OAuth2ClientConfig struct {

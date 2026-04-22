@@ -14,10 +14,17 @@ PAYMENT [provider_url]                 // Connexion Paiement (Stripe, MoMo, X402
 SECURITY [name]                        // Profil de sécurité réutilisable
 
 AUTH [name] DEFINE                     // Enregistre un gestionnaire d'authentification global
-    // Configuration globale (base de données, secret...)
-    // + Définition des stratégies (USER, USERS, AUTH CSV, AUTH BEGIN...)
+    SECRET "my-secret"                 // Configuration globale
+    DATABASE "sqlite://auth.db"
+
+    // + Définition des stratégies locales (USER, USERS, AUTH CSV, AUTH BEGIN...)
     // + Définition des clients OAuth2 (STRATEGY google DEFINE...)
-    // + Définition du serveur OAuth2 (SERVER DEFINE...)
+    
+    SERVER DEFINE                      // Beba comme Provider OAuth2
+        TOKEN_EXPIRATION "1h"
+        ISSUER "beba-auth"
+        LOGIN "./public/login.html"    // Interface personnalisée optionnelle
+    END SERVER
 END AUTH
 
 [PROTOCOL] [address]                   // Groupe d'écoute (TCP, UDP, HTTP, HTTPS, MQTT, MAIL...)

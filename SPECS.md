@@ -28,8 +28,9 @@ Ce document définit les tâches prioritaires pour l'évolution du projet.
 - [x] **[Technique]** Directive `AUTH` globale et universelle : registre d'authentification unifié indépendant des protocoles.
 - [x] **[Technique]** Stratégies locales (JSON, YAML, CSV, USER...) et scriptables (JS `allow()`/`reject(msg...)`) avec support **Bcrypt**.
 - [x] **[Technique]** Support OAuth2 (Client) intégré pour les connexions sociales via la directive `STRATEGY`.
-- [x] **[Technique]** Squelette de support OAuth2 (Provider) via la directive `SERVER` pour que Beba agisse comme fournisseur d'identité.
+- [x] **[Technique]** Support complet OAuth2 (Provider) via la directive `SERVER DEFINE` pour agir comme fournisseur d'identité avec tokens JWT sans état.
 - [x] **[Technique]** APIs unifiées `/auth/login`, `/auth/me`, `/auth/callback/:strategy` intégrables via `AUTH [name] [path]` dans le `HTTP`.
+- [x] **[Technique]** API JavaScript unifiée pour l'authentification : `require('auth')` exposant `authenticate`, `generateToken`, `validateToken`, et `revokeToken`.
 - [x] **[Technique]** Module `dtp` en JavaScript : client complet avec `newClient`, `connect`, `on`, `sendData`, `ping`, `disconnect`.
 - [x] **[Technique]** Multiplexage intelligent : optimisation pour un protocole unique sur un port (évite le timeout de peeking).
 - [x] **[Technique]** Centralisation de la résolution de contenu via `RouteConfig.Content()` pour tous les protocoles.

@@ -170,6 +170,7 @@ The environment provides several internal modules. Some are available as **Globa
 | **PDF** | Native | `pdf` | High-fidelity PDF generation (TCPDF). |
 | **Storage** | Native | `storage` | SQLite backed sessions and KV cache. |
 | **DTP** | Native | `dtp` | Device Transfer Protocol client. |
+| **Auth** | Native | `auth` | Unified Authentication API and JWT management. |
 
 ---
 
@@ -351,3 +352,24 @@ Persistent SQLite Key-Value storage.
 - `session(id)`: Store for specific session.
 - `shared`: Global persistent store.
 - `cache`: High-speed volatile store.
+
+### `auth`
+Unified interface for authentication, OAuth2, and JSON Web Tokens (JWT).
+```javascript
+const auth = require('auth');
+const manager = auth.getManager("central"); // ou auth.get("central")
+
+// Authenticate a user
+const user = manager.authenticate("", { username: "alice", password: "pwd" });
+
+if (user) {
+    // Generate a stateless JWT
+    const token = manager.generateToken(user, "2h", "my-app");
+    
+    // Validate
+    const verified = manager.validateToken(token);
+    
+    // Revoke
+    manager.revokeToken("jti-uuid-here");
+}
+```

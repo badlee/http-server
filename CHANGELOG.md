@@ -10,8 +10,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - **Unified Authentication System**: Centralized all authentication logic into a new `modules/auth` module.
 - **Global AUTH DSL**: New top-level `AUTH [name] DEFINE` blocks supporting multiple sources: `USERS`, `USER`, `AUTH CSV`, and scripted `AUTH BEGIN`.
-- **OAuth2 Client & Server**: Built-in support for OAuth2 social logins (`STRATEGY` block) and a skeleton for Beba as an OAuth2 Provider (`SERVER` block).
+- **OAuth2 Client & Server**: Built-in support for OAuth2 social logins (`STRATEGY` block). Beba can now also act as a full OAuth2 Provider (`SERVER DEFINE` block) with standard endpoints (`/oauth2/authorize`, `/oauth2/token`, `/oauth2/userinfo`).
+- **JWT & Session Management**: Built-in stateless JWT access token generation with database-backed JTI tracking for explicit token revocation.
 - **HTTP AUTH Directive**: Mount authentication managers anywhere in your URL space using `AUTH [manager] [path]` within an `HTTP` block.
+- **Unified JS API**: Expose the auth manager directly to JavaScript via `require('auth')`, providing programmatic `authenticate`, `generateToken`, `validateToken`, and `revokeToken` capabilities.
 - **Unified APIs**: Standardized `/auth/login`, `/auth/me`, and `/auth/callback/:strategy` endpoints across all protocols.
 
 ### Changed

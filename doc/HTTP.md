@@ -32,6 +32,10 @@ HTTP 0.0.0.0:80
 END HTTP
 ```
 
+> [!NOTE]
+> Mounting an authentication manager automatically exposes standard endpoints like `/login`, `/me`, and `/callback/:strategy`. If the manager defines an OAuth2 `SERVER`, it also exposes `/oauth2/authorize`, `/oauth2/token`, and `/oauth2/userinfo` under the specified path.
+
+
 ### 🛑 Feature Deactivation
 You can selectively disable default features using the `DISABLE` directive.
 

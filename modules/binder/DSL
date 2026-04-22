@@ -64,7 +64,9 @@ AUTH [name] DEFINE [arguments...]?
 
     // -- Beba comme Fournisseur OAuth2 --
     SERVER DEFINE
-        // Configurations du serveur
+        TOKEN_EXPIRATION [duration_string] // Ex: "1h", "30m"
+        ISSUER [string]
+        LOGIN [filepath] // Chemin vers l'UI de login personnalisée
     END SERVER
 END AUTH
 
