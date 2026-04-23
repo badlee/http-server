@@ -5,13 +5,34 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.0.6] - 2026-04-23
+
+### Added
+- **MQTT TCP Multiplexing**: Enabled robust MQTT protocol support within shared `TCP` binder groups. MQTT can now share a single port with other protocols (like HTTP or DTP) using reactive peeking.
+- **Dynamic MQTT Listener Injection**: Implemented "ghost" listener support for Mochi-MQTT, allowing the Binder to establish connections on behalf of the MQTT server without requiring a dedicated listening port.
+- **Two-Phase Reactive Peeking**: Optimized the TCP peeking orchestrator to use a 1ms timeout for immediate matching, falling back to a full 2-second wait only when multiplexing is active. This ensures zero-latency for standard single-protocol ports.
+- **Binder Parser Registry**: Registered `MQTT`, `DATABASE`, and `MAIL` as recognized protocol keywords in the binder parser, allowing nested configurations within `TCP` and `UDP` blocks.
+- **Special Router Files Documentation**: Added exhaustive documentation for the FSRouter's special files system, including `_start.js`, `_close.js`, `_middleware.js`, `_layout`, method-specific fallbacks (`_GET.js`), and cron scripts (`*.cron.js`).
+
+### Fixed
+- **MQTT Protocol Matching**: Stiffened the MQTT matching logic to strictly validate CONNECT packet headers (inspecting the first 16 bytes), preventing misidentification of binary traffic as MQTT.
+- **MQTT SSE Publishing Hooks**: Fixed a race condition/deadlock in the SSE Hub's MQTT publishing hook registration during server restarts.
+- **FSRouter Fallback Logic**: Fixed a regression where method-specific routes in `module.exports` were not correctly prioritized over generic directory fallbacks.
+
 ## [0.0.5] - 2026-04-22
 
 ### Added
 - **Connection Peeking Optimization**: Eliminated the 512-byte `Peek` with a 2-second timeout for non-multiplexed protocols (such as HTTP, MQTT) when they are the only protocol bound to a port. This drastically reduces connection latency for standard setups by using a direct accept loop instead of the generic peeking orchestrator.
+- **FsRouter Strict JS Routing**: Re-engineered `.js` file routing to cleanly separate backend routes from frontend static assets. Only files prefixed with a HTTP method/route (`_GET.js`, `_route.js`) or containing dynamic parameters (`[id].js`) are executed on the server. All other `.js` files (like `app.js` or `utils.js`) are served as standard static files.
+- **FsRouter Priority Hierarchy**: Implemented a robust scoring system (`Static > Exact > Dynamic > Fallback`) ensuring predictable route resolution. Depth-based scoring ensures that nested routes correctly override root-level fallbacks.
+- **Recursive Error Resolution**: Error handlers (`_404.js`, `_error.html`, etc.) are now resolved recursively by traversing upwards from the requested path. Added support for method-specific error handlers (e.g., `_404.POST.js`) and unified the `cfg.NotFound` hook for Go-based customization.
+- **FsRouter Universal Export & 405 Handling**: `module.exports` in JS routes can now be defined directly as a function (acts as the `ANY` method). When exporting an object, method resolution is fully case-insensitive. If a request's HTTP method is not exported (and no `ANY` fallback is present) but the path exists, the router now returns a strict `405 Method Not Allowed` with a descriptive message.
+- **FsRouter Directory Index Fallback**: Requests to a physical directory now automatically fallback to searching for an index file (e.g., `index.html`). This fallback is permissive for templates: a `POST` request to a directory will serve the `index.html` template even if it's registered as a `GET` route, facilitating simple hybrid workflows.
+- **Enhanced Error Handling**: Improved the global HTTP error handler to return specific error messages (e.g., "Method not allowed", "Not found") instead of a generic "Internal Server Error" for common routing issues.
 
 ### Fixed
 - **FsRouter Path Resolution**: Fixed a bug where the `ROUTER` directive with a single argument (e.g., `ROUTER .`) was incorrectly parsing the directory as the URL path, resulting in 404 errors. `ROUTER .` now correctly mounts the current directory to the root URL `/`.
+- **Case-Insensitive Routing**: Updated `FsRouter` route matching to be fully case-insensitive for static files, exact routes, and dynamic parameters. `strings.EqualFold` is now used for URL matching, ensuring that paths like `/image/logo.png` correctly resolve to `./Images/logo.png` regardless of capitalization, matching Fiber's default case-insensitive behavior.
 
 ## [0.0.4] - 2026-04-22
 

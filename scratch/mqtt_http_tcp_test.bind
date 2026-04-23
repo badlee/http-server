@@ -1,0 +1,10 @@
+TCP 127.0.0.1:1884
+    HTTP
+        ROUTER .
+    END HTTP
+    MQTT
+        AUTH BEGIN
+            allow();
+        END AUTH
+    END MQTT
+END TCP

@@ -142,4 +142,30 @@ MQTT [address]?
         /* code JS */
     END ON
 END MQTT
+
+---
+
+## 🔄 Multiplexage et Port Sharing
+
+Lorsqu'il est utilisé à l'intérieur d'un bloc `TCP`, le protocole `MQTT` partage le port avec les autres protocoles (ex: HTTP, DTP). 
+
+Le serveur utilise alors un mécanisme de **"Two-Phase Reactive Peeking"** :
+1.  **Phase 1 (Immédiate)** : Le Binder peeke les premiers octets. Si un paquet `CONNECT` MQTT est détecté (identifié par la signature binaire `0x10` suivie de la longueur et du protocole "MQTT"), la connexion est immédiatement routée.
+2.  **Phase 2 (Injection)** : La connexion est injectée dans le broker via un **"ghost listener"** interne. Ce listener virtuel permet au broker de fonctionner sans monopoliser un port TCP réel, évitant ainsi les erreurs "address already in use".
+
+### Exemple de Multiplexage :
+```hcl
+TCP :80
+    HTTP
+        ROUTER .
+    END HTTP
+    
+    MQTT
+        AUTH BEGIN
+            allow();
+        END AUTH
+    END MQTT
+END TCP
+```
+Dans cet exemple, le port 80 gère à la fois le trafic Web et les connexions IoT MQTT de manière totalement transparente.
 ```

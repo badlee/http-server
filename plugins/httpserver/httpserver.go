@@ -140,15 +140,17 @@ func New(cfg Config) *HTTP {
 					return cfg.ErrorHandler(c, err)
 				}
 				code := fiber.StatusInternalServerError
+				message := "Internal Server Error"
 				if e, ok := err.(*fiber.Error); ok {
 					code = e.Code
+					message = e.Message
 				}
 				if code == fiber.StatusNotFound {
 					cfg.stdoutLogger.Warn().Str("path", c.Path()).Msg("route not found")
 					return c.Status(fiber.StatusNotFound).SendString("Not Found")
 				}
 				cfg.stderrLogger.Error().Err(err).Str("path", c.Path()).Int("status", code).Msg("request error")
-				return c.Status(code).SendString("Internal Server Error")
+				return c.Status(code).SendString(message)
 			},
 		}),
 		Config:     &cfg,

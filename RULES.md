@@ -18,6 +18,7 @@ Ce document définit les règles de codage et les standards à suivre pour le pr
 3. **MQTT**: Topics are mapped 1:1 to Hub channels. Avoid using `#` or `+` in channel names unless intended for MQTT wildcard matching.
 4. **Hierarchical Channels**: Standardize CRUD channels as `crud:{ns}:{schema}:{id}:{action}`. Use `broadcastCRUD` helper in `modules/crud` for consistency.
 5. **Channel Injection**: Modules can pre-configure SSE channels by setting `c.Locals("channels")` (string or `[]string`) before calling `sse.Handler`.
+6. **MQTT Ghost Listeners**: When MQTT is used within a Binder group (TCP multiplexing), ensure it uses a "ghost" listener (id: `ghost`, address: `127.0.0.1:0`) to avoid port conflicts while maintaining `EstablishConnection` functionality.
 
 ### CRUD & Administration (Admin HTMX)
 
@@ -37,11 +38,17 @@ Ce document définit les règles de codage et les standards à suivre pour le pr
 ### FsRouter (File-System Routing)
 
 1. **Naming**: Use `[id].js` for dynamic parameters and `[...catchall].js` for catch-all routes.
-2. **Handlers**: exported handlers via `module.exports = { GET: (c) => ... }` are preferred for clarity, but `.GET.js` suffixes are supported for simple cases.
-3. **Middlewares**: `_middleware.js` files are applied recursively. Ensure `c.Next()` is called to propagate the chain.
-4. **Layouts**: `_layout.html` or `_layout.js` files are recursive and must use the `content` variable (Mustache `{{content}}` or JS global `content`).
-5. **Partials**: Use `.partial.` in the filename (e.g., `info.partial.html`) to bypass layout wrapping for AJAX or API fragments.
-6. **Context**: Use `c.Locals("_fsrouter_params")` and `c.Locals("_fsrouter_catchall")` to access routing variables if needed natively.
+2. **JS Route Identification**: A `.js` file is ONLY a route if it matches `_METHOD.js`, `_route.js` or contains dynamic parameters `[...]`. All other `.js` files are treated as static.
+3. **Hierarchy**: Priority is `Static > Exact > Dynamic > Fallback`.
+4. **405 vs 404**: Return 405 (Method Not Allowed) if the path exists (physically or as a route) but the method is unsupported.
+5. **Index Fallback**: If a directory is requested and no route matches, the router attempts to serve its index file (e.g., `index.html`). This is permissive for templates (POST will serve a GET template if it's the only index).
+6. **Recursive Errors**: Error handlers (`_[code]` or `_error`) are resolved recursively upwards, supporting method-specific files (e.g., `_404.POST.js`).
+7. **Handlers**: exported handlers via `module.exports = { GET: (c) => ... }` are preferred for clarity. Fichiers like `_GET.js` strictly only export their primary method and `ANY`.
+8. **Private Files**: Any file starting with `_` or `.` that is not a recognized special file is ignored and never served as static content.
+7. **Middlewares**: `_middleware.js` files are applied recursively. Ensure `c.Next()` is called to propagate the chain.
+8. **Layouts**: `_layout.html` or `_layout.js` files are recursive and must use the `content` variable.
+9. **Partials**: Use `.partial.` in the filename (e.g., `info.partial.html`) to bypass layout wrapping.
+10. **Context**: Use `c.Locals("_fsrouter_params")` and `c.Locals("_fsrouter_catchall")` to access routing variables.
 7. **Hot-Reload**: Route changes (file create/delete/rename) trigger an automatic rescan with 150ms debounce. Content modifications only invalidate the file cache. Controlled by `--hot-reload` (default: `true`).
 8. **File Cache**: All template/JS files are lazy-loaded into an in-memory TTL cache (`fileCache`). Use `--cache-ttl` to control expiration (default: `5m`). TTL ≤ 0 means permanent cache (no cleanup goroutine).
 9. **Per-Router Cache**: Use the `cacheTtl` argument on the `ROUTER` directive (e.g., `ROUTER / ./pages @[cacheTtl="10m"]`) to override the global `--cache-ttl` per route group.

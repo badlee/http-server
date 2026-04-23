@@ -169,8 +169,13 @@ func (ms *MQTTServer) ServeConn(conn net.Conn) {
 	}
 
 	go func() {
-		// Use a local ID or the remote address for logging
-		err := ms.server.EstablishConnection("tcp-proxy", conn)
+		// Use "tcp-proxy" if available, else fallback to "ghost" (added in NewMQTTServer for ghost/ServeConn support)
+		listenerID := "tcp-proxy"
+		if _, ok := ms.server.Listeners.Get(listenerID); !ok {
+			listenerID = "ghost"
+		}
+		
+		err := ms.server.EstablishConnection(listenerID, conn)
 		if err != nil {
 			// Expected if server is closing
 			conn.Close()

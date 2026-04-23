@@ -168,7 +168,28 @@ REDIRECT 301 "/old" "/new" c.Get("User-Agent").includes("Mobile")
 
 ## 🔄 FsRouter Hot-Reload & File Cache
 
-The FsRouter includes built-in **hot-reload** and an **intelligent file cache** to optimize development speed and production performance.
+The FsRouter includes built-in **hot-reload**, an **intelligent file cache**, and **case-insensitive routing** to optimize development speed and production performance.
+
+### Case-Insensitive Routing
+All route matching within the FsRouter is case-insensitive. This applies to static files, exact routes, and dynamic parameters. For example, a request to `/image/logo.png` will correctly serve the file located at `./Images/logo.png`.
+
+### Strict JS Routing
+The FsRouter clearly separates server-side routes from client-side static assets. A `.js` file is only executed as a server-side route if it is explicitly named as a method or route (e.g., `_GET.js`, `_route.js`) or contains dynamic parameters (e.g., `[id].js`). All other `.js` files are securely served directly to the client as static assets.
+
+### Priority Hierarchy
+Routes are resolved based on a strict scoring system:
+1.  **Static Files** (physical matches)
+2.  **Exact Routes** (filename matches)
+3.  **Dynamic Routes** (`[id]`)
+4.  **Fallbacks** (`_METHOD`, `_route`)
+
+Nested files (deeper in the directory tree) always take precedence over files in parent directories.
+
+### Recursive Error Handling
+Error handlers (`_404.js`, `_error.html`) are resolved recursively by traversing upwards. Method-specific handlers (e.g., `_404.POST.js`) allow for granular error responses.
+
+### Index Fallback & 405 Handling
+If a path matches a physical directory and no specific route exists, the router automatically attempts to serve its index file (e.g., `index.html`). This fallback is permissive for templates: a `POST` request will serve the `index.html` template if it's the only point of entry. If a path exists but no valid entry point or method matches, a **405 Method Not Allowed** is returned with a descriptive message.
 
 ### Hot-Reload (Development)
 

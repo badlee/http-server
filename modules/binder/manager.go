@@ -268,6 +268,12 @@ func (m *Manager) startGroup(group GroupConfig, registered []ProtocolRegistratio
 		log.Printf("Manager: Calling Start() on protocol %s...", p.Name())
 		a, err := p.Start()
 		if err != nil {
+			// If we are in a TCP group and the address is already in use, it might be 
+			// because another protocol in the same group already started listening on it.
+			if strings.ToUpper(group.Directive) == "TCP" && strings.Contains(err.Error(), "address already in use") {
+				log.Printf("Manager: Protocol %s sharing address, continuing...", p.Name())
+				continue
+			}
 			return fmt.Errorf("failed to start protocol %s: %v", p.Name(), err)
 		}
 		log.Printf("Manager: Protocol %s started, got %d listeners", p.Name(), len(a))
@@ -304,7 +310,7 @@ func (m *Manager) startGroup(group GroupConfig, registered []ProtocolRegistratio
 			}
 		}
 
-		needsPeek := strings.ToUpper(group.Directive) == "TCP"
+		needsPeek := strings.ToUpper(group.Directive) == "TCP" && len(protocols) > 1
 		if needsPeek {
 			go m.acceptLoop(ln, protocols, policyName)
 		} else {
@@ -413,11 +419,31 @@ func (m *Manager) acceptLoop(ln net.Listener, protocols []Directive, policyName 
 
 func (m *Manager) handleConnection(conn net.Conn, protocols []Directive) {
 	br := bufio.NewReader(conn)
+	
+	// Phase 1: Wait for the first byte of data with a reasonable timeout.
+	// This prevents the server from hanging on idle connections.
+	start := time.Now()
 	conn.SetReadDeadline(time.Now().Add(2 * time.Second))
-	log.Printf("Manager: Peeking bytes from %s...", conn.RemoteAddr())
+	log.Printf("Manager: Waiting for initial data from %s...", conn.RemoteAddr())
 
+	if _, err := br.Peek(1); err != nil {
+		// If we couldn't even get 1 byte, it's a real timeout or connection issue
+		if !errors.Is(err, io.EOF) && !strings.Contains(err.Error(), "closed") {
+			log.Printf("Manager: Peek (1 byte) error from %s: %v", conn.RemoteAddr(), err)
+		}
+		conn.Close()
+		return
+	}
+
+	// Phase 2: Once we have at least 1 byte, we wait a very short time for more data.
+	// This allows the rest of the initial packet (handshake, request headers) to arrive
+	// without waiting for the full 512-byte buffer or the long 2s timeout.
+	conn.SetReadDeadline(time.Now().Add(1 * time.Millisecond))
 	peekData, err := br.Peek(512)
-	// If it's EOF or error, we still try to match whatever we got unless it's a real timeout error
+	
+	// Reset deadline for the actual handler
+	conn.SetReadDeadline(time.Time{})
+	
 	if err != nil && err != io.EOF && !errors.Is(err, bufio.ErrBufferFull) {
 		// Ignore timeout if we got some data
 		if len(peekData) == 0 {
@@ -426,8 +452,7 @@ func (m *Manager) handleConnection(conn net.Conn, protocols []Directive) {
 			return
 		}
 	}
-	conn.SetReadDeadline(time.Time{})
-	log.Printf("Manager: Peeked %d bytes from %s", len(peekData), conn.RemoteAddr())
+	log.Printf("Manager: Peeked %d bytes from %s in %v", len(peekData), conn.RemoteAddr(), time.Since(start))
 
 	wrappedConn := &PeekedConn{
 		Conn: conn,

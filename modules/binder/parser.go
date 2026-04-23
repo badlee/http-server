@@ -9,10 +9,11 @@ import (
 	"path/filepath"
 	"strings"
 
+	"sync"
+
 	"github.com/joho/godotenv"
 	"github.com/pelletier/go-toml/v2"
 	"gopkg.in/yaml.v3"
-	"sync"
 )
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -64,6 +65,9 @@ func init() {
 	RegisterProtocolKeyword("UDP")
 	RegisterProtocolKeyword("DTP")
 	RegisterProtocolKeyword("SECURITY")
+	RegisterProtocolKeyword("MQTT")
+	RegisterProtocolKeyword("DATABASE")
+	RegisterProtocolKeyword("MAIL")
 }
 
 // RegisterProtocolKeyword adds a new top-level directive name that can be used
@@ -1026,7 +1030,6 @@ var knownHandlerTypes = map[string]bool{
 	"BINARY": true, "BASE32": true, "BASE64": true, "HEX": true,
 	"TEXT": true, "JSON": true, "YAML": true, "TOML": true, "ENV": true,
 }
-
 
 func newProto(name, address string, args Arguments, file string) *DirectiveConfig {
 	return &DirectiveConfig{

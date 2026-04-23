@@ -27,23 +27,36 @@ Le dossier racine (par défaut `./pages/`) définit l'arborescence des URLs.
 |---|---|---|
 | `index.html` | `/` | Template |
 | `about.html` | `/about` | Template |
-| `api/status.js` | `/api/status` | Handler JS |
+| `api/_GET.js` | `/api` | Handler JS (GET) |
+| `api/users/_POST.js` | `/api/users` | Handler JS (POST) |
 | `assets/logo.png` | `/assets/logo.png` | Fichier Statique |
+| `js/app.js` | `/js/app.js` | Fichier Statique JS (car non préfixé par _) |
 | `blog/[slug].html` | `/blog/:slug` | Route Dynamique |
 
 ---
 
 ## Fichiers Spéciaux
 
-Les fichiers commençant par un underscore `_` ont des comportements spéciaux et ne sont pas routés directement comme des pages publiques.
+Les fichiers commençant par un underscore `_` (ou respectant une nomenclature dynamique `[...]`) ont des comportements spéciaux :
 
-| Nom | Description |
-|---|---|
-| `_middleware.js` | S'exécute avant toute route dans ce répertoire et ses sous-dossiers. |
-| `_layout.html` | Enveloppe commune pour toutes les pages du répertoire. |
-| `_start.js` | S'exécute une seule fois au démarrage du serveur. |
-| `_close.js` | S'exécute lors de la fermeture propre du serveur. |
-| `_*.cron.js` | Tâche planifiée (ex: `_cleanup.cron.js`). |
+| Nom / Pattern | Type | Description |
+|---------------|------|-------------|
+| `_middleware.js` | Middleware | Exécuté avant toute route du dossier (cascade). |
+| `_layout.html` / `.js` | Layout | Structure visuelle commune (tag `{{content}}`). |
+| `_start.js` | Cycle de vie | Exécuté une seule fois au démarrage du routeur. |
+| `_close.js` | Cycle de vie | Exécuté proprement lors de l'arrêt du serveur. |
+| `_*.cron.js` | Job | Tâche planifiée automatique (expression CRON en 1ère ligne). |
+| `_route.js` | Fallback | Handler universel (toutes méthodes) pour le dossier. |
+| `_GET.js`, `_POST.js`... | Fallback | Handler spécifique à une méthode HTTP pour le dossier. |
+| `_404.html` / `.js` | Erreur | Handler 404 personnalisé (résolution récursive ascendante). |
+| `_500.html` / `.js` | Erreur | Handler d'erreur interne du serveur (500). |
+| `_{code}.html` / `.js` | Erreur | Handler pour un code HTTP précis (ex: `_403.js`, `_401.html`). |
+| `_error.html` / `.js` | Erreur | Handler d'erreur générique pour tout code non couvert. |
+| `index.html` | Index | Route par défaut du dossier (ex: `/blog/index.html` -> `/blog`). |
+| `[param].html` / `.js` | Dynamique | Route avec paramètre (ex: `[id].html` -> `/:id`). |
+| `[...slug].html` / `.js` | Catch-all | Capture tout le reste du chemin (ex: `[...all].js` -> `/*`). |
+| `(group)/` | Groupe | Dossier dont le nom est ignoré dans l'URL (layout grouping). |
+| `*.partial.html` / `.js`| Partiel | Fichier exclu de l'empaquetage automatique dans le layout. |
 
 ---
 
@@ -105,18 +118,52 @@ Utilisez `[...]` pour capturer tout le reste du chemin.
 
 ---
 
-## Méthodes HTTP
+## Hiérarchie et Priorité
 
-Un fichier JS peut gérer plusieurs méthodes de deux manières :
+Le routeur utilise un système de priorité strict pour résoudre les conflits de routes. Les routes sont triées selon le score suivant (plus élevé = prioritaire) :
 
-1. **Suffixe de fichier** : `users.POST.js`, `items.DELETE.js`.
-2. **Export d'objet** :
-```js
-module.exports = {
-    GET: function(ctx) { ... },
-    POST: function(ctx) { ... }
-};
-```
+1.  **Type de Route** :
+    -   `Static` (Fichier physique exact) : **10 000**
+    -   `Exact` (Fichier route matchant le nom) : **8 000**
+    -   `Dynamic` (`[param]`) : **5 000**
+    -   `Fallback` (`_METHOD`, `_route`) : **1 000**
+2.  **Profondeur** : Chaque segment du chemin ajoute **100** points. Un fichier dans un sous-dossier gagne sur un fichier à la racine.
+3.  **Spécificité Méthode** : Un fichier incluant la méthode dans son nom (ex: `users.GET.html`) gagne **50** points sur un fichier générique (`users.html`).
+4.  **Type de fichier** : Les fichiers `.js` (scripts) gagnent **5** points sur les fichiers `.html` (templates).
+
+---
+
+## Méthodes HTTP et Routes JS
+
+Les fichiers `.js` obéissent à des règles de routage strictes pour distinguer les **routes serveur** des **fichiers statiques client** (comme les scripts frontend).
+
+Un fichier `.js` est considéré comme une **route serveur** uniquement s'il répond à l'un des critères suivants :
+1. **Fichier Dynamique** : Son nom contient des crochets (ex: `[id].js`, `[...catchall].js`).
+2. **Préfixe de Méthode** : Son nom commence par un underscore suivi d'une méthode HTTP ou de `route` (ex: `_GET.js`, `_POST.js`, `_route.js`). **Ces noms sont insensibles à la casse**.
+
+**Tous les autres fichiers `.js`** (ex: `app.js`, `script.js`) sont servis comme des **fichiers statiques** directement au client.
+
+### Exemples de Routes JS :
+- `api/users/_GET.js` → Route `GET /api/users`
+- `api/users/_POST.js` → Route `POST /api/users`
+- `api/users/_route.js` → Route `/api/users` (le fichier peut exporter plusieurs méthodes).
+- `api/users/[id].js` → Route dynamique `/api/users/:id`
+
+Un fichier route (HTML ou JS) peut gérer la méthode HTTP de plusieurs manières :
+
+1. **Nom explicite** : Fichiers JS `_POST.js` ou Templates HTML `users.POST.html`.
+2. **Export d'objet (JS uniquement)** :
+   ```js
+   module.exports = {
+       GET: function(ctx) { ... },
+       post: function(ctx) { ... }, // Case-insensitive
+       ANY: function(ctx) { ... }   // Fallback
+   };
+   ```
+3. **Export de fonction (JS uniquement)** : Si `module.exports` est une fonction, elle agit comme le gestionnaire universel (`ANY`).
+
+> [!IMPORTANT]
+> Si un chemin correspond à une ressource existante mais qu'aucune méthode ne matche (ex: `POST` sur un fichier `index.html`), le serveur renvoie un **405 Method Not Allowed** au lieu d'un 404.
 
 ---
 
@@ -140,7 +187,23 @@ Les layouts permettent d'entourer le contenu d'une page avec des éléments comm
 
 ## Gestion des Erreurs
 
-Les fichiers nommés par un code HTTP (ex: `404.html`, `500.js`) ou `_error.html` servent de handlers pour les codes d'erreur correspondants. Le routeur cherche le handler le plus proche dans la hiérarchie des dossiers.
+Les handlers d'erreur sont recherchés de manière récursive en remontant l'arborescence des dossiers.
+
+### Résolution récursive
+Pour une erreur sur `/api/users/42` :
+1.  Le serveur cherche `api/users/{code}.[METHOD].js` (ou `.html`)
+2.  Puis `api/users/{code}.js`
+3.  Puis `api/users/_error.[METHOD].js`
+4.  Puis `api/users/_error.js`
+5.  S'il ne trouve rien, il remonte au parent `api/` et recommence l'étape 1.
+6.  Enfin, il vérifie la racine `/`.
+
+### Cas Particuliers
+- **404 vs 405** : Si le chemin demandé correspond à un dossier physique ou à une route existante (mais avec une mauvaise méthode), le serveur génère un **405 Method Not Allowed** avec un message explicatif. Sinon, c'est un **404**.
+- **Index Fallback Permissif** : Si un chemin correspond à un dossier physique et qu'aucune route directe n'est trouvée pour la méthode demandée, le serveur vérifie si un fichier index (ex: `index.html`) existe. S'il existe, il est exécuté comme template. Ce mécanisme est **permissif** : une requête `POST /` servira `index.html` (qui est normalement `GET`) si c'est le seul point d'entrée du dossier.
+- **Strict Method Scoping** : Pour éviter les collisions, les fichiers comme `_GET.js` sont restreints à l'export de leur méthode primaire (`GET`) ainsi qu'à la méthode universelle `ANY`. Les autres exports spécifiques sont ignorés au profit de fichiers dédiés ou de `_route.js`.
+- **Fichiers Privés** : Tout fichier commençant par un underscore `_` ou un point `.` qui n'est pas explicitement reconnu comme un fichier spécial est **totalement ignoré** par le routeur (il ne sera ni routé, ni servi comme fichier statique).
+- **NotFound Config** : Si aucun handler `404` n'est trouvé dans les fichiers, le serveur utilise la fonction `cfg.NotFound` (si définie dans le code Go).
 
 ---
 

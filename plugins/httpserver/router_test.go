@@ -1009,7 +1009,9 @@ func TestFilePathToRoute_Table(t *testing.T) {
 	}
 
 	for _, tc := range cases {
-		url, method, dyn, catch, part := filePathToRoute(tc.in, cfg)
+		url, method, dyn, catch, part, fallback, hasMethod := filePathToRoute(tc.in, cfg)
+		_ = fallback
+		_ = hasMethod
 		if url != tc.wantURL {
 			t.Errorf("[%s] url: got %q, want %q", tc.in, url, tc.wantURL)
 		}
@@ -1361,7 +1363,7 @@ func TestFindErrorHandler_ExactCode(t *testing.T) {
 	handlers := map[string]map[string]string{
 		"/": {"500": "/pages/500.html", "_error": "/pages/_error.html"},
 	}
-	fp, kind := findErrorHandler(500, "/about", handlers)
+	fp, kind := findErrorHandler(500, "GET", "/about", handlers)
 	if fp != "/pages/500.html" {
 		t.Errorf("expected 500.html, got %q", fp)
 	}
@@ -1374,7 +1376,7 @@ func TestFindErrorHandler_Wildcard(t *testing.T) {
 	handlers := map[string]map[string]string{
 		"/": {"_error": "/pages/_error.html"},
 	}
-	fp, kind := findErrorHandler(422, "/form", handlers)
+	fp, kind := findErrorHandler(422, "POST", "/form", handlers)
 	if fp != "/pages/_error.html" {
 		t.Errorf("expected _error.html, got %q", fp)
 	}
@@ -1389,12 +1391,12 @@ func TestFindErrorHandler_CloserDirWins(t *testing.T) {
 		"/api": {"500": "/pages/api/500.html"},
 	}
 	// Requête dans /api → api/500.html gagne
-	fp, _ := findErrorHandler(500, "/api/users", handlers)
+	fp, _ := findErrorHandler(500, "GET", "/api/users", handlers)
 	if fp != "/pages/api/500.html" {
 		t.Errorf("expected api/500.html, got %q", fp)
 	}
 	// Requête dans / → root/500.html
-	fp2, _ := findErrorHandler(500, "/about", handlers)
+	fp2, _ := findErrorHandler(500, "GET", "/about", handlers)
 	if fp2 != "/pages/500.html" {
 		t.Errorf("expected root/500.html, got %q", fp2)
 	}
@@ -1405,7 +1407,7 @@ func TestFindErrorHandler_NotFound(t *testing.T) {
 		"/api": {"404": "/pages/api/404.html"},
 	}
 	// Code 500 → aucun handler → ("", "")
-	fp, _ := findErrorHandler(500, "/api/users", handlers)
+	fp, _ := findErrorHandler(500, "GET", "/api/users", handlers)
 	if fp != "" {
 		t.Errorf("expected empty, got %q", fp)
 	}
@@ -1416,7 +1418,7 @@ func TestFindErrorHandler_SubdirFallsToRoot(t *testing.T) {
 		"/": {"_error": "/pages/_error.html"},
 		// /a/b/c n'a pas de handler
 	}
-	fp, _ := findErrorHandler(503, "/a/b/c/page", handlers)
+	fp, _ := findErrorHandler(503, "GET", "/a/b/c/page", handlers)
 	if fp != "/pages/_error.html" {
 		t.Errorf("expected root _error.html after traversal, got %q", fp)
 	}

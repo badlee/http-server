@@ -42,7 +42,7 @@ Oubliez la complexité des infrastructures Docker et micro-services : déployez 
 ## Fonctionnalités clés
 
 ### Routage par fichiers (FsRouter)
-Comme dans **Next.js** ou **Nuxt.js**, la structure de votre répertoire définit vos routes. Support natif des paramètres dynamiques (`[id]`), des groupes (`(group)`), des layouts imbriqués (`_layout.html`) et des middlewares en cascade (`_middleware.js`).
+Comme dans **Next.js** ou **Nuxt.js**, la structure de votre répertoire définit vos routes. Support natif des paramètres dynamiques (`[id]`), des groupes (`(group)`), des layouts imbriqués (`_layout.html`) et des middlewares en cascade (`_middleware.js`). Le routage est entièrement **insensible à la casse** (ex: `/image/logo.png` résout correctement `./Images/logo.png`).
 
 ### SSR et scripting JS natif
 Exécutez du **JavaScript côté serveur** directement dans vos templates (`<script server>`, `<?js ?>`, `<?= ... ?>`). Accédez à votre base de données, au hub temps-réel, aux sessions – sans API intermédiaire.
@@ -143,11 +143,15 @@ Les fichiers `_*.cron.js` sont automatiquement planifiés. L'en-tête `# CRON * 
 console.log("Tâche exécutée toutes les 5 minutes");
 ```
 
-### Cycle de vie du serveur
-- `_start.js` : exécuté une seule fois au démarrage
-- `_close.js` : exécuté à l'arrêt propre (SIGTERM/SIGINT)
-- `_middleware.js` : middleware en cascade
-- `_layout.html` : layout imbriqué
+### Cycle de vie et Fichiers Spéciaux
+- `_start.js` : exécuté une seule fois au démarrage.
+- `_close.js` : exécuté à l'arrêt propre (SIGTERM/SIGINT).
+- `_middleware.js` : middleware en cascade appliqué au sous-arbre.
+- `_layout.html` : layout imbriqué (injection via `{{content}}`).
+- `_route.js` : handler universel (toutes méthodes) pour un dossier.
+- `_GET.js`, `_POST.js`, ... : handlers spécifiques par méthode HTTP.
+- `_404.html`, `_500.js`, `_error.html` : handlers d'erreurs résolus récursivement.
+- `_*.cron.js` : scripts de tâches planifiées (expression CRON en 1ère ligne).
 
 ---
 
@@ -346,21 +350,56 @@ mon-projet/
 │   │   ├── index.html          # /blog
 │   │   └── [slug].html         # Route dynamique /blog/:slug
 │   ├── api/
-│   │   ├── users.js            # Endpoint GET /api/users
-│   │   └── users.POST.js       # Endpoint POST /api/users
+│   │   ├── _GET.js             # Endpoint GET /api
+│   │   ├── users/
+│   │   │   └── _POST.js        # Endpoint POST /api/users
+│   │   └── [id].js             # Endpoint dynamique /api/:id (accepte paramètre)
+│   ├── script.js               # Fichier statique (servi tel quel)
 │   └── _cleanup.cron.js        # Tâche planifiée toutes les X minutes
 └── uploads/                    # Fichiers statiques (images, etc.)
 ```
 
+**Règles de routage JavaScript :**
+Les fichiers `.js` ne sont considérés comme des routes serveur que s'ils respectent ces conditions :
+- **Fallbacks et Méthodes** : Nommés avec une méthode HTTP ou `route` préfixée d'un underscore (ex: `_GET.js`, `_POST.js`, `_route.js`). Ils sont insensibles à la casse (`_get.js` fonctionne).
+- **Fichiers Dynamiques** : Contenant des paramètres entre crochets (ex: `[id].js`, `[...catchall].js`).
+
+**Priorité Hiérarchique** : Le routeur applique un système de priorité strict pour résoudre les conflits :
+1.  `Static` (Fichier physique exact)
+2.  `Exact` (Fichier route matchant le nom)
+3.  `Dynamic` (`[param]`)
+4.  `Fallback` (`_METHOD`, `_route`)
+
+Les fichiers dans des dossiers profonds sont privilégiés par rapport aux fichiers racines. Si un chemin existe mais que la méthode HTTP n'est pas supportée, le serveur renvoie un **405 Method Not Allowed**.
+
+**Tous les autres fichiers `.js`** (ex: `app.js`, `script.js`) sont servis comme des **fichiers statiques** au client.
+
+**Gestion des erreurs récursive** : Les handlers d'erreur (`_404.js`, `_error.html`) sont recherchés récursivement en remontant l'arborescence des dossiers. 
+
+**Fallback Répertoires** : Si un dossier est accédé directement (ex: `/blog/`) et qu'aucune route explicite ne correspond, le serveur tente d'exécuter le fichier index à l'intérieur (ex: `index.html`). Ce fallback est permissif : une requête `POST` servira le template `index.html` s'il est le seul disponible, facilitant les workflows simples.
+
+**Fichiers Privés** : Tout fichier commençant par `_` ou `.` qui n'est pas un fichier spécial reconnu est ignoré (non routé et non servi comme statique).
+
+**Gestion 405 Method Not Allowed** : Si un chemin existe (physiquement ou comme route) mais que la méthode HTTP n'est pas supportée, le serveur renvoie une erreur **405** avec un message descriptif, au lieu d'un simple 404.
+
 **Fichiers spéciaux :**
 
-| Nom | Description |
-|-----|-------------|
-| `_middleware.js` | S'exécute avant toute route du dossier |
-| `_layout.html` | Layout commun (tag `{{content}}` pour le contenu) |
-| `_start.js` | Une seule fois au démarrage |
-| `_close.js` | Une seule fois à l'arrêt |
-| `_*.cron.js` | Tâche planifiée (CRON en première ligne) |
+| Nom / Pattern | Type | Description |
+|---------------|------|-------------|
+| `_middleware.js` | Middleware | S'exécute avant toute route du dossier et de ses sous-dossiers. |
+| `_layout.html` / `.js` | Layout | Structure commune. Le contenu de la page est injecté dans `{{content}}`. |
+| `_start.js` | Cycle de vie | Exécuté une seule fois au démarrage du serveur. |
+| `_close.js` | Cycle de vie | Exécuté une seule fois lors de l'arrêt du serveur. |
+| `_*.cron.js` | Tâche | Tâche planifiée. La 1ère ligne doit être une expression CRON (ex: `// * * * * *`). |
+| `_GET.js`, `_POST.js`... | Route Fallback | Handler catch-all pour une méthode spécifique dans le dossier. |
+| `_route.js` | Route Fallback | Handler universel (toutes méthodes) pour le dossier. |
+| `_404.html` / `.js` | Erreur | Handler pour l'erreur 404 (Not Found). Résolution récursive. |
+| `_{code}.html` / `.js` | Erreur | Handler pour un code HTTP spécifique (ex: `_500.html`, `_403.js`). |
+| `_error.html` / `.js` | Erreur | Handler d'erreur générique (tous codes non couverts). |
+| `index.html` | Index | Route par défaut du dossier (ex: `/blog/index.html` -> `/blog`). |
+| `[param].html` / `.js` | Dynamique | Route avec paramètre (ex: `[id].html` -> `/:id`). |
+| `[...slug].html` / `.js` | Catch-all | Capture tout le reste du chemin (ex: `[...all].js` -> `/*`). |
+| `*.partial.html` / `.js`| Partiel | Fichier exclu de l'empaquetage automatique dans le layout. |
 
 ---
 

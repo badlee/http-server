@@ -39,7 +39,11 @@ Ce document définit les tâches prioritaires pour l'évolution du projet.
 - [x] **[Technique]** Support des Route Groups récursifs avec `GROUP [path] DEFINE`.
 - [x] **[Technique]** `REGISTER PROTOCOL [NAME] [file]` pour les protocoles JS custom.
 - [x] **[Technique]** Directive `INCLUDE [filepath]` pour l'inclusion récursive de fichiers Binder avec détection de récursivité (fatal error).
-- [x] **[Technique]** Gestion des erreurs HTTP 405 (Method Not Allowed) dans le `FsRouter`.
+- [x] **[Technique]** Gestion des erreurs HTTP 405 (Method Not Allowed) dans le `FsRouter` avec messages descriptifs.
+- [x] **[Technique]** Mécanisme de "Index Fallback" permissif pour les dossiers (permet de servir `index.html` pour un POST si nécessaire).
+- [x] **[Technique]** Système de priorité hiérarchique pour le routage (`Static > Exact > Dynamic > Fallback`).
+- [x] **[Technique]** Résolution récursive ascendante des error handlers avec support des méthodes spécifiques (`_404.POST.js`).
+- [x] **[Technique]** Distinction stricte entre routes JS (nomenclature spécifique) et fichiers JS statiques avec isolation des méthodes (`_GET.js`).
 - [x] **[Technique]** Support du protocole Socket.IO unifié via la méthode `IO`.
 - [x] **[Technique]** Support des layouts hiérarchiques (`_layout.html`, _layout.js) avec héritage et injection de contenu.
 - [x] **[Technique]** Support des fichiers partiels (`.partial.[html|js]`) pour bypasser les layouts.
@@ -52,6 +56,9 @@ Ce document définit les tâches prioritaires pour l'évolution du projet.
 - [x] **[Sécurité]** Protection par défaut (Baseline) de 100r/s (burst 10) appliquée globalement à TOUS les protocoles (TCP, UDP, HTTP, DTP).
 - [x] **[Sécurité]** Surcharge de la politique globale via l'argument `[default]` dans un bloc `SECURITY`.
 - [x] **[Sécurité]** Intégration du WAF Coraza (L7) avec support des directives `@WAF`, `@IP`, `@GEO`, `@BOT`, `@AUDIT`.
+- [x] **[Technique]** Support robuste du multiplexage MQTT dans les blocs `TCP` : élimination des conflits de ports et délégation de connexion via "ghost listeners".
+- [x] **[Technique]** Optimisation "Two-Phase Peeking" : timeout 1ms pour réponse immédiate sur port unique, 2s pour multiplexage actif.
+- [x] **[Technique]** Enregistrement des mots-clés `MQTT`, `DATABASE`, `MAIL` dans le parser Binder pour support nested.
 - [x] Documentation complète de toutes les directives dans `doc/BINDER.md`, `doc/WAF.md`, `RULES.md`, `README.md`.
 - [x] Exemples de tests dans `examples/` : `test_all_features.bind`, `multiplex_test.bind`, `rewrite_test.bind`, `security_geojson_*.bind`, `security_default_override.bind`.
 

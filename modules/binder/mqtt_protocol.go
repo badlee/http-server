@@ -105,7 +105,7 @@ func (d *MQTTDirective) Start() ([]net.Listener, error) {
 
 		// Prepare MQTTConfig
 		mqttConfig := sse.MQTTConfig{
-			ListenerAddress: d.cfg.Address,
+			ListenerAddress: "", // Don't let mochi-mqtt listen, we handle it via Start() and ServeConn
 			StorageDB:       storageDB,
 		}
 
@@ -135,14 +135,24 @@ func (d *MQTTDirective) Start() ([]net.Listener, error) {
 
 // Match is used by the Manager to sniff incoming protocol bytes.
 func (d *MQTTDirective) Match(peekData []byte) (bool, error) {
-	if len(peekData) >= 8 {
-		// Control Packet Type 1 (CONNECT) is 0x10.
-		if peekData[0] == 0x10 {
-			// Look for "MQTT" (v3.1.1/v5) or "MQIsdp" (v3.1).
-			if strings.Contains(string(peekData), "MQTT") || strings.Contains(string(peekData), "MQIsd") {
-				return true, nil
-			}
-		}
+	if len(peekData) < 8 {
+		return false, nil
+	}
+	// Control Packet Type 1 (CONNECT) is 0x10.
+	if peekData[0] != 0x10 {
+		return false, nil
+	}
+
+	// The protocol name "MQTT" or "MQIsdp" usually starts at offset 4 or 5
+	// depending on the length of the Remaining Length field (1-4 bytes).
+	// We'll search in the first 16 bytes for safety.
+	searchLen := len(peekData)
+	if searchLen > 16 {
+		searchLen = 16
+	}
+	s := string(peekData[:searchLen])
+	if strings.Contains(s, "MQTT") || strings.Contains(s, "MQIsd") {
+		return true, nil
 	}
 	return false, nil
 }

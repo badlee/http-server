@@ -27,7 +27,7 @@ AUTH [name] DEFINE                     // Enregistre un gestionnaire d'authentif
     END SERVER
 END AUTH
 
-[PROTOCOL] [address]                   // Groupe d'écoute (TCP, UDP, HTTP, HTTPS, MQTT, MAIL...)
+[PROTOCOL] [address]                   // Groupe d'écoute (TCP, UDP, HTTP, HTTPS, MQTT, MAIL, DATABASE, DTP...)
     // Si imbriqué dans TCP, [address] est optionnel (hérité du parent)
     DISABLE [TYPE] [FEATURE] 
     // -- Configuration & Environnement --
@@ -523,9 +523,13 @@ ROUTER / "./pages" @[exclude="node_modules,tmp"]
 ```
 
 > [!NOTE]
-> Le hot-reload des routes (ajout/suppression de fichiers `.html`/`.js`) est actif par défaut en mode développement (`--hot-reload`). Les modifications de contenu invalident uniquement le cache ; les changements de structure (nouveaux fichiers, suppressions) déclenchent un rescan automatique avec un debounce de 150ms.
->
-> En mode production (`--no-hot-reload`), le cache est permanent et aucun watcher n'est démarré.
+> **Hot-Reload & Priority** : Le hot-reload des routes (ajout/suppression de fichiers `.html`/`.js`) est actif par défaut en mode développement (`--hot-reload`). Les modifications de contenu invalident uniquement le cache ; les changements de structure déclenchent un rescan automatique avec un debounce de 150ms.
+> 
+> **Routage JS Strict** : Seuls les fichiers JS respectant une nomenclature spécifique (`_METHOD.js`, `_route.js`, ou `[...]`) sont traités comme des routes. Les autres sont servis comme fichiers statiques.
+> 
+> **Priorité** : Les routes sont résolues selon l'ordre `Static > Exact > Dynamic > Fallback`. La profondeur dans l'arborescence est également prise en compte pour privilégier les fichiers imbriqués.
+> 
+> **Erreurs Récursives** : Les handlers d'erreur (`_404.js`, `_error.html`) sont résolus récursivement en remontant vers la racine. Si une route existe mais que la méthode HTTP est invalide, un **405 Method Not Allowed** est renvoyé.
 
 ---
 

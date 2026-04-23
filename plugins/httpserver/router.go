@@ -18,21 +18,21 @@ package httpserver
 //   ├── _middleware.js          → middleware appliqué à tout le sous-arbre
 //   ├── (auth)/                 → groupe de layout — préfixe de chemin ignoré
 //   │   └── dashboard.html      → GET  /dashboard
-//   ├── 404.html                → handler 404 personnalisé (alias de _error.html pour code=404)
-//   ├── 500.html                → handler d'erreur pour le code HTTP 500
-//   ├── _error.html             → handler d'erreur générique (tous codes non couverts)
+//   ├── _404[.<method>]?.html    → handler 404 personnalisé (alias de _error.html pour code=404)
+//   ├── _500[.<method>]?.html    → handler d'erreur pour le code HTTP 500
+//   ├── _error[.<method>]?.html   → handler d'erreur générique (tous codes non couverts)
 //   └── api/
-//       ├── 422.js              → handler d'erreur 422 pour le sous-arbre /api
-//       └── _error.js           → handler d'erreur générique pour /api
+//       ├── _422[.<method>]?.js   → handler d'erreur 422 pour le sous-arbre /api
+//       └── _error[.<method>]?.js  → handler d'erreur générique pour /api
 //
 // # Fichiers spéciaux
 //
-//   index.<ext>       → route racine du répertoire
-//   [param].<ext>     → paramètre dynamique        → :param
+//   index.html       → route racine du répertoire
+//   [param][.<method>]?.<ext>     → paramètre dynamique        → :param
 //   [...param].<ext>  → catch-all                  → *
 //   _middleware.js    → middleware JS appliqué en cascade
 //   _layout.<ext>     → layout injecté (future)
-//   {code}.<ext>      → handler d'erreur pour ce code HTTP  ex: 404.html, 500.js
+//   _{code}[.<method>]?.<ext>      → handler d'erreur pour ce code HTTP  ex: 404.html, 500.js
 //   _error.<ext>      → handler d'erreur générique (tous codes non couverts par un fichier dédié)
 //   *.*               → tout autre fichier est servi statiquement (c.SendFile)
 //                       sauf si son chemin relatif matche un pattern Exclude
@@ -104,6 +104,9 @@ import (
 	"github.com/go-co-op/gocron/v2"
 	"github.com/gofiber/fiber/v3"
 )
+
+var MethodNotAllowedError = fiber.NewError(fiber.StatusMethodNotAllowed, "Method not allowed")
+var NotFoundeError = fiber.NewError(fiber.StatusNotFound, "Not found")
 
 // ==================== CONFIG ====================
 
@@ -253,26 +256,29 @@ func isExcluded(relPath string, patterns []*regexp.Regexp) bool {
 
 // routeEntry représente une route résolue lors du scan.
 type routeEntry struct {
-	method      string   // "GET", "POST", "ANY", etc. Défaut : "GET"
-	urlPattern  string   // Pattern Fiber, ex: "/blog/:slug"
-	filePath    string   // Chemin absolu du fichier source
-	isTemplate  bool     // true si c'est un fichier template (TemplateExt)
-	isJS        bool     // true si c'est un fichier .js exécuté entièrement
-	isExport    bool     // true si la route vient d'un module.exports = { METHOD: fn }
-	isPartial   bool     // true si c'est un partial (ne pas wrapper dans le layout)
-	exportKey   string   // clé dans module.exports (ex: "GET"), vide si isExport=false
-	isStatic    bool     // true si le fichier est servi statiquement via c.SendFile
-	isDynamic   bool     // true si la route contient au moins un :param ou *
-	isCatchAll  bool     // true si la route se termine par *
-	middlewares []string // chemins des _middleware.js applicables (racine → profond)
-	is404       bool     // true si c'est un handler 404
-	layouts     []string // chemins des _layout.<ext> applicables (profond → racine)
+	method          string   // "GET", "POST", "ANY", etc. Défaut : "GET"
+	urlPattern      string   // Pattern Fiber, ex: "/blog/:slug"
+	filePath        string   // Chemin absolu du fichier source
+	isTemplate      bool     // true si c'est un fichier template (TemplateExt)
+	isJS            bool     // true si c'est un fichier .js exécuté entièrement
+	isExport        bool     // true si la route vient d'un module.exports = { METHOD: fn }
+	isPartial       bool     // true si c'est un partial (ne pas wrapper dans le layout)
+	exportKey       string   // clé dans module.exports (ex: "GET"), vide si isExport=false
+	isStatic        bool     // true si le fichier est servi statiquement via c.SendFile
+	isDynamic       bool     // true si la route contient au moins un :param ou *
+	isCatchAll      bool     // true si la route se termine par *
+	middlewares     []string // chemins des _middleware.js applicables (racine → profond)
+	is404           bool     // true si c'est un handler 404
+	layouts         []string // chemins des _layout.<ext> applicables (profond → racine)
+	isFallback      bool     // true si c'est un fichier _METHOD.js ou _route.js
+	hasMethodInName bool     // true si la méthode est explicitement dans le nom du fichier
 }
 
 // knownHTTPMethods est l'ensemble des méthodes HTTP reconnues comme clés d'export.
 var knownHTTPMethods = map[string]bool{
 	"GET": true, "POST": true, "PUT": true, "DELETE": true,
 	"PATCH": true, "HEAD": true, "OPTIONS": true, "ANY": true,
+	"CONNECT": true, "TRACE": true,
 }
 
 // ==================== FILE CACHE ====================
@@ -627,7 +633,7 @@ func FsRouter(cfgs ...RouterConfig) (fiber.Handler, error) {
 	cache := newFileCache(ttl)
 	state := &routerState{
 		routes:           routes,
-		middlewareMap:     middlewareMap,
+		middlewareMap:    middlewareMap,
 		notFoundHandlers: notFoundHandlers,
 		errorHandlers:    errorHandlers,
 		layoutMap:        layoutMap,
@@ -695,20 +701,57 @@ func FsRouter(cfgs ...RouterConfig) (fiber.Handler, error) {
 			return nil
 		}
 
-		if pathMatched {
-			// Le chemin a été trouvé, mais pas la bonne méthode HTTP => 405
-			return handleHTTPError(c, fiber.ErrMethodNotAllowed, path, errorHandlers, layoutMap, cfg, state.cache)
+		// Ni route ni méthode trouvée.
+		// Vérifier si le dossier ou le chemin existe physiquement pour choisir entre 404 et 405
+		relPath := strings.TrimPrefix(path, "/")
+		fullFSPath := filepath.Join(cfg.Root, relPath)
+		if info, err := os.Stat(fullFSPath); err == nil && info.IsDir() {
+			// Si c'est un dossier, on vérifie si un index.html existe (si rien n'a matché avant)
+			indexPath := filepath.Join(fullFSPath, cfg.IndexFile+cfg.TemplateExt)
+			if _, err := os.Stat(indexPath); err == nil {
+				// On cherche la route correspondant à ce fichier physique
+				for i := range routes {
+					r := &routes[i]
+					// On accepte le fallback si c'est le bon fichier ET (bonne méthode OU c'est un template qui accepte tout par défaut dans ce cas)
+					if r.filePath == indexPath && (r.method == method || r.method == "ANY" || r.isTemplate) {
+						mwHandlers := buildMiddlewareChain(r.middlewares, middlewareMap, cfg, state.cache)
+						finalHandler := buildRouteHandler(r, cfg, state.cache)
+						err := runChain(c, append(mwHandlers, finalHandler))
+						if err != nil {
+							return handleHTTPError(c, err, path, errorHandlers, layoutMap, cfg, state.cache)
+						}
+						return nil
+					}
+				}
+			}
+			// Si on arrive ici, le dossier existe mais soit pas d'index, soit pas de méthode correspondante
+			return handleHTTPError(c, MethodNotAllowedError, path, errorHandlers, layoutMap, cfg, state.cache)
 		}
 
-		// 404 — chercher un handler 404 dans la hiérarchie
-		if h := find404Handler(path, notFoundHandlers, layoutMap, cfg, state.cache); h != nil {
-			return h(c)
+		if pathMatched {
+			// Le chemin a été trouvé dans les routes, mais pas la bonne méthode HTTP => 405
+			return handleHTTPError(c, MethodNotAllowedError, path, errorHandlers, layoutMap, cfg, state.cache)
 		}
-		if cfg.NotFound != nil {
-			return cfg.NotFound(c)
+
+		code := fiber.ErrNotFound.Code
+		message := fiber.ErrNotFound.Message
+		if _, err := os.Stat(fullFSPath); err == nil && path != "/" {
+			code = MethodNotAllowedError.Code
+			message = MethodNotAllowedError.Message
 		}
-		// Pas de route trouvée → erreur 404 via le système d'error handlers
-		return handleHTTPError(c, fiber.ErrNotFound, path, errorHandlers, layoutMap, cfg, state.cache)
+
+		// Chercher un handler pour ce code d'erreur
+		errCode := fiber.NewError(code, message)
+		if code == fiber.StatusNotFound {
+			if h := find404Handler(path, notFoundHandlers, layoutMap, cfg, state.cache); h != nil {
+				return h(c)
+			}
+			if cfg.NotFound != nil {
+				return cfg.NotFound(c)
+			}
+		}
+
+		return handleHTTPError(c, errCode, path, errorHandlers, layoutMap, cfg, state.cache)
 	}, nil
 }
 
@@ -716,10 +759,6 @@ func FsRouter(cfgs ...RouterConfig) (fiber.Handler, error) {
 
 // scanDirectory parcourt récursivement le répertoire et collecte les routes,
 // les middlewares, les handlers 404 et les error handlers.
-//
-// errorHandlers : map[urlDir]map[codeOrWildcard]filePath
-//
-//	codeOrWildcard est soit un code HTTP ("404","500",...) soit "_error" (wildcard)
 func scanDirectory(
 	baseDir, dir string,
 	layoutMap map[string][]string,
@@ -741,12 +780,12 @@ func scanDirectory(
 		ext := filepath.Ext(name)
 		base := strings.TrimSuffix(name, ext)
 
-		// Ignorer les fichiers cachés (commençant par .) sauf pour les fichiers autorisés explicitement
+		// Ignorer les fichiers cachés (commençant par .)
 		if strings.HasPrefix(name, ".") {
 			return nil
 		}
 
-		// Fichiers spéciaux : _start, _close, _*.cron.js
+		// 1. Fichiers spéciaux de cycle de vie et cron
 		if name == "_start.js" {
 			startFiles = append(startFiles, path)
 			return nil
@@ -760,15 +799,13 @@ func scanDirectory(
 			return nil
 		}
 
-		// Middleware spécial
+		// 2. Middlewares et Layouts
 		if base == "_middleware" && ext == ".js" {
 			relDir, _ := filepath.Rel(baseDir, filepath.Dir(path))
 			urlDir := fsPathToURL(relDir)
 			middlewareMap[urlDir] = path
 			return nil
 		}
-
-		// Layout spécial
 		if base == "_layout" && (ext == cfg.TemplateExt || ext == ".js") {
 			relDir, _ := filepath.Rel(baseDir, filepath.Dir(path))
 			urlDir := fsPathToURL(relDir)
@@ -776,115 +813,170 @@ func scanDirectory(
 			return nil
 		}
 
-		// Error handlers : {code}.{ext} et _error.{ext}
-		// Formats reconnus : "404", "500", "422", ... ou "_error"
-		// "404" est aussi ajouté à notFoundHandlers pour compatibilité avec find404Handler.
-		if (isHTTPErrorCode(base) || base == "_error") && (ext == cfg.TemplateExt || ext == ".js") {
+		// 3. Error handlers
+		isErrorHandler := false
+		errCode := ""
+		errMethod := ""
+		if (strings.HasPrefix(base, "_") || isHTTPErrorCode(base) || base == "error") && (ext == cfg.TemplateExt || ext == ".js") {
+			nameWithoutUnderscore := base
+			if strings.HasPrefix(base, "_") {
+				nameWithoutUnderscore = base[1:]
+			}
+			parts := strings.Split(nameWithoutUnderscore, ".")
+			potentialCode := parts[0]
+			if isHTTPErrorCode(potentialCode) || potentialCode == "error" {
+				isErrorHandler = true
+				errCode = potentialCode
+				if potentialCode == "error" {
+					errCode = "_error"
+				}
+				if len(parts) > 1 {
+					m := strings.ToUpper(parts[1])
+					if knownHTTPMethods[m] {
+						errMethod = m
+					}
+				}
+			}
+		}
+
+		if isErrorHandler {
 			relDir, _ := filepath.Rel(baseDir, filepath.Dir(path))
 			urlDir := fsPathToURL(relDir)
 			if errorHandlers[urlDir] == nil {
 				errorHandlers[urlDir] = make(map[string]string)
 			}
-			errorHandlers[urlDir][base] = path
-			// Alias : "404" est aussi un notFoundHandler pour rester compatible
-			if base == "404" {
+			key := errCode
+			if errMethod != "" {
+				key = errCode + "." + errMethod
+			}
+			errorHandlers[urlDir][key] = path
+			if errCode == "404" && errMethod == "" {
 				notFoundHandlers[urlDir] = path
 			}
 			return nil
 		}
 
-		// Fichiers statiques : tout ce qui n'est pas template ni .js
-		// → servi directement via c.SendFile si ServeFiles=true et non exclu
-		if ext != cfg.TemplateExt && ext != ".js" {
-			if !cfg.ServeFiles {
-				return nil // fichiers statiques désactivés
+		isJSRoute := func(name string) bool {
+			if !strings.HasSuffix(name, ".js") {
+				return false
 			}
-			relPath, _ := filepath.Rel(baseDir, path)
-			if isExcluded(relPath, cfg.Exclude) {
-				return nil // exclu par pattern
+			base := strings.TrimSuffix(name, ".js")
+			baseUpper := strings.ToUpper(base)
+
+			// 1. Fallbacks : _METHOD.js ou _route.js
+			if strings.HasPrefix(baseUpper, "_") {
+				methodPart := strings.TrimPrefix(baseUpper, "_")
+				if methodPart == "ROUTE" || knownHTTPMethods[methodPart] {
+					return true
+				}
 			}
-			// Les fichiers statiques conservent leur extension dans l'URL
-			urlPattern := staticFileURL(relPath)
-			if urlPattern == "" {
-				return nil
+
+			// 2. Dynamiques : [...].js ou [...].METHOD.js
+			if strings.Contains(base, "[") && strings.Contains(base, "]") {
+				return true
 			}
-			mws := collectMiddlewares(baseDir, filepath.Dir(path), middlewareMap)
-			routes = append(routes, routeEntry{
-				method:     "GET",
-				urlPattern: urlPattern,
-				filePath:   path,
-				isStatic:   true,
-				// Les fichiers statiques sont toujours des URLs exactes (pas de :param ni *)
-				isDynamic:   false,
-				isCatchAll:  false,
-				middlewares: mws,
-			})
-			return nil
+
+			return false
 		}
 
-		// Appliquer Exclude aussi sur les templates et les handlers JS
-		// (protège contre la livraison de fichiers privés .js/_middleware etc.)
-		{
-			relPath, _ := filepath.Rel(baseDir, path)
-			if isExcluded(relPath, cfg.Exclude) {
-				return nil
+		// 4. JS avec exports (Seulement si c'est un fichier reconnu comme route JS)
+		if isJSRoute(name) {
+			exportedMethods := probeModuleExports(path)
+			if len(exportedMethods) == 0 {
+				baseUpper := strings.ToUpper(base)
+				if baseUpper == "_ROUTE" {
+					exportedMethods = []string{"NONE"}
+				}
 			}
-		}
 
-		// Construire l'URL de base depuis le chemin relatif
-		relPath, _ := filepath.Rel(baseDir, path)
-		urlPattern, method, isDynamic, isCatchAll, isPartial := filePathToRoute(relPath, cfg)
-		if urlPattern == "" {
-			return nil
-		}
-
-		// Middlewares applicables (sera recalculé au second passage)
-		mws := collectMiddlewares(baseDir, filepath.Dir(path), middlewareMap)
-
-		// ---- Détection module.exports = { METHOD: fn, ... } ----
-		// Un fichier .js peut exporter un objet dont les clés sont des méthodes HTTP.
-		// On l'inspecte via un VM léger AVANT de créer les routeEntry définitives.
-		if ext == ".js" && method == "GET" {
-			// On inspecte uniquement si la méthode n'est pas déjà explicite dans le nom
-			// (users.POST.js → method="POST" → déjà un handler simple, pas un export)
-			if exportedMethods := probeModuleExports(path); len(exportedMethods) > 0 {
+			if len(exportedMethods) > 0 {
+				relPath, _ := filepath.Rel(baseDir, path)
+				urlPattern, _, isDynamic, isCatchAll, isPartial, isFallback, hasMethod := filePathToRoute(relPath, cfg)
+				// Middlewares seront recalculés à la fin
 				for _, m := range exportedMethods {
 					routes = append(routes, routeEntry{
-						method:      m,
-						urlPattern:  urlPattern,
-						filePath:    path,
-						isJS:        false,
-						isExport:    true,
-						isPartial:   isPartial,
-						exportKey:   m,
-						isDynamic:   isDynamic,
-						isCatchAll:  isCatchAll,
-						middlewares: mws,
+						method:          m,
+						urlPattern:      urlPattern,
+						filePath:        path,
+						isJS:            true,
+						isExport:        true,
+						isPartial:       isPartial,
+						exportKey:       m,
+						isDynamic:       isDynamic,
+						isCatchAll:      isCatchAll,
+						isFallback:      isFallback,
+						hasMethodInName: hasMethod,
 					})
 				}
 				return nil
 			}
 		}
 
-		entry := routeEntry{
-			method:      method,
-			urlPattern:  urlPattern,
-			filePath:    path,
-			isTemplate:  ext == cfg.TemplateExt,
-			isJS:        ext == ".js",
-			isDynamic:   isDynamic,
-			isCatchAll:  isCatchAll,
-			isPartial:   isPartial,
-			middlewares: mws,
+		// Si on arrive ici et que le fichier commence par _ , c'est un fichier "privé" non reconnu
+		// (les fichiers spéciaux comme _middleware, _layout, _GET ont déjà retourné nil plus haut)
+		if strings.HasPrefix(name, "_") {
+			return nil
 		}
-		routes = append(routes, entry)
+
+		// 5. Fichiers statiques : non-templates ET (non-JS OU JS non-route)
+		isStatic := ext != cfg.TemplateExt && (ext != ".js" || !isJSRoute(name))
+		if isStatic {
+			if !cfg.ServeFiles {
+				return nil
+			}
+			relPath, _ := filepath.Rel(baseDir, path)
+			if isExcluded(relPath, cfg.Exclude) {
+				return nil
+			}
+			urlPattern := staticFileURL(relPath)
+			if urlPattern == "" {
+				return nil
+			}
+			routes = append(routes, routeEntry{
+				method:     "GET",
+				urlPattern: urlPattern,
+				filePath:   path,
+				isStatic:   true,
+				isDynamic:  false,
+				isCatchAll: false,
+			})
+			return nil
+		}
+
+		// 6. Routes par défaut (Templates ou scripts sans exports explicites)
+		relPath, _ := filepath.Rel(baseDir, path)
+		if isExcluded(relPath, cfg.Exclude) {
+			return nil
+		}
+
+		urlPattern, method, isDynamic, isCatchAll, isPartial, isFallback, hasMethod := filePathToRoute(relPath, cfg)
+		if urlPattern == "" {
+			return nil
+		}
+
+		routes = append(routes, routeEntry{
+			method:          method,
+			urlPattern:      urlPattern,
+			filePath:        path,
+			isTemplate:      ext == cfg.TemplateExt,
+			isJS:            ext == ".js",
+			isDynamic:       isDynamic,
+			isCatchAll:      isCatchAll,
+			isPartial:       isPartial,
+			isFallback:      isFallback,
+			hasMethodInName: hasMethod,
+		})
 		return nil
 	})
 
 	_ = err
 
-	// Second passage pour injecter les middlewares dans les routes
-	// (middlewareMap est maintenant complet)
+	// Tri des routes par priorité décroissante
+	sort.SliceStable(routes, func(i, j int) bool {
+		return routePriority(routes[i]) > routePriority(routes[j])
+	})
+
+	// Second passage pour injecter les middlewares et layouts
 	for i := range routes {
 		routes[i].middlewares = collectMiddlewares(
 			baseDir,
@@ -941,7 +1033,7 @@ func staticFileURL(relPath string) string {
 //	pages/users.POST.js          → ("/users"        , "POST",false, false, false)
 //	pages/page.partial.html      → ("/page"         , "GET", false, false, true)
 //	pages/(auth)/dashboard.html  → ("/dashboard"   , "GET", false, false, false)
-func filePathToRoute(relPath string, cfg RouterConfig) (urlPattern, method string, isDynamic, isCatchAll, isPartial bool) {
+func filePathToRoute(relPath string, cfg RouterConfig) (urlPattern, method string, isDynamic, isCatchAll, isPartial, isFallback, hasMethod bool) {
 	method = "GET"
 
 	// Normaliser les séparateurs
@@ -958,13 +1050,12 @@ func filePathToRoute(relPath string, cfg RouterConfig) (urlPattern, method strin
 	}
 
 	// Détecter la méthode HTTP dans le nom du fichier (users.POST.js → "POST")
-	// Exemple : "api/users.POST" → base="api/users", method="POST"
-	// On utilise knownHTTPMethods globale (exclut "ANY" — ANY n'est pas un nom de fichier valide)
 	parts := strings.Split(withoutExt, ".")
 	if len(parts) >= 2 {
 		lastPart := strings.ToUpper(parts[len(parts)-1])
 		if knownHTTPMethods[lastPart] && lastPart != "ANY" {
 			method = lastPart
+			hasMethod = true
 			withoutExt = strings.Join(parts[:len(parts)-1], ".")
 		}
 	}
@@ -980,8 +1071,24 @@ func filePathToRoute(relPath string, cfg RouterConfig) (urlPattern, method strin
 		}
 
 		// Index → segment vide (supprimé)
-		if seg == cfg.IndexFile {
+		// On ne supprime l'index que pour les templates (.html), pas pour les fichiers .js
+		if seg == cfg.IndexFile && ext != ".js" {
 			continue
+		}
+
+		// Fallback files : _ROUTE, _GET, etc.
+		segUpper := strings.ToUpper(seg)
+		if strings.HasPrefix(segUpper, "_") {
+			switch segUpper {
+			case "_ROUTE":
+				isFallback = true
+				continue
+			case "_GET", "_POST", "_PUT", "_DELETE", "_PATCH", "_HEAD", "_OPTIONS", "_CONNECT", "_TRACE":
+				method = strings.TrimPrefix(segUpper, "_")
+				isFallback = true
+				hasMethod = true
+				continue
+			}
 		}
 
 		// Catch-all : [...param] → *
@@ -1004,6 +1111,13 @@ func filePathToRoute(relPath string, cfg RouterConfig) (urlPattern, method strin
 		urlSegments = append(urlSegments, seg)
 	}
 
+	// Si c'est un fallback, on ajoute un catch-all à la fin du pattern
+	if isFallback {
+		isCatchAll = true
+		isDynamic = true
+		urlSegments = append(urlSegments, "+fallback")
+	}
+
 	// Construire le pattern
 	if len(urlSegments) == 0 {
 		urlPattern = "/"
@@ -1020,7 +1134,7 @@ func filePathToRoute(relPath string, cfg RouterConfig) (urlPattern, method strin
 		urlPattern = "/" + strings.Join(finalSegs, "/")
 	}
 
-	return urlPattern, method, isDynamic, isCatchAll, isPartial
+	return urlPattern, method, isDynamic, isCatchAll, isPartial, isFallback, hasMethod
 }
 
 // fsPathToURL convertit un chemin relatif filesystem en préfixe URL.
@@ -1077,10 +1191,21 @@ func matchRoute(r *routeEntry, method, path string, c fiber.Ctx) (bool, bool) {
 	if r.isCatchAll {
 		// Le pattern est /prefix/* : vérifier le préfixe
 		prefix := strings.TrimSuffix(r.urlPattern, "*")
-		if len(path) >= len(prefix) && strings.EqualFold(path[:len(prefix)], prefix) {
+		cleanPrefix := strings.TrimSuffix(prefix, "/")
+
+		isMatch := false
+		catchAllVal := ""
+
+		if strings.EqualFold(path, cleanPrefix) {
+			isMatch = true
+		} else if len(path) >= len(prefix) && strings.EqualFold(path[:len(prefix)], prefix) {
+			isMatch = true
+			catchAllVal = path[len(prefix):]
+		}
+
+		if isMatch {
 			pathMatch = true
-			// Injecter le paramètre catch-all via Locals (en conservant la casse originale pour la valeur)
-			c.Locals("_fsrouter_catchall", path[len(prefix):])
+			c.Locals("_fsrouter_catchall", catchAllVal)
 		}
 	} else if !r.isDynamic {
 		pathMatch = strings.EqualFold(r.urlPattern, path)
@@ -1412,15 +1537,51 @@ func find404Handler(path string, notFoundHandlers map[string]string, layoutMap m
 //	Dynamique                → 500 - nombre de params
 //	Catch-all                → 0
 func routePriority(r routeEntry) int {
-	if r.isCatchAll {
-		return 0
+	depth := strings.Count(r.urlPattern, "/")
+
+	// Priorité de base selon le type de route
+	base := 0
+	if r.isStatic {
+		base = 10000
+	} else if r.isFallback {
+		base = 1000
+	} else if r.isDynamic {
+		base = 5000
+	} else {
+		// Exact handler
+		base = 8000
 	}
-	if !r.isDynamic {
-		depth := strings.Count(r.urlPattern, "/")
-		return 1000 - depth
+
+	// Plus profond = plus spécifique
+	p := base + depth*100
+
+	// Sous-priorités au sein d'une même catégorie
+	ext := filepath.Ext(r.filePath)
+	isJS := ext == ".js"
+
+	if r.isFallback {
+		// _METHOD > _route
+		isRoute := strings.Contains(strings.ToUpper(filepath.Base(r.filePath)), "_ROUTE")
+		if !isRoute {
+			p += 50 // _METHOD
+		}
+	} else if r.isDynamic {
+		// METHOD > sans method
+		if r.hasMethodInName {
+			p += 50
+		}
+		// catch-all est moins prioritaire que dynamic simple
+		if r.isCatchAll {
+			p -= 20
+		}
 	}
-	paramCount := strings.Count(r.urlPattern, ":")
-	return 500 - paramCount*10
+
+	// JS > HTML
+	if isJS {
+		p += 5
+	}
+
+	return p
 }
 
 // ==================== ERROR HANDLERS ====================
@@ -1441,18 +1602,18 @@ func isHTTPErrorCode(s string) bool {
 }
 
 // findErrorHandler cherche le handler le plus proche pour un code HTTP donné.
+// findErrorHandler cherche le handler le plus proche pour un code HTTP donné.
 //
 // Algorithme de résolution (du dossier de la requête vers la racine) :
-//  1. Chercher {code}.<ext> dans le dossier courant
-//  2. Sinon chercher _error.<ext> dans le dossier courant
-//  3. Remonter au dossier parent et recommencer
-//  4. Retourner nil si rien n'est trouvé jusqu'à la racine
-//
-// Le code "404" est traité comme un code normal — find404Handler reste
-// le handler de routing (URL inconnue), findErrorHandler intercepte les
-// erreurs HTTP levées par les handlers de route.
-func findErrorHandler(code int, reqPath string, errorHandlers map[string]map[string]string) (filePath, kind string) {
+//  1. Chercher _[code].[METHOD].<ext> dans le dossier courant
+//  2. Sinon chercher _[code].<ext> dans le dossier courant
+//  3. Sinon chercher _error.[METHOD].<ext> dans le dossier courant
+//  4. Sinon chercher _error.<ext> dans le dossier courant
+//  5. Remonter au dossier parent et recommencer
+//  6. Retourner nil si rien n'est trouvé jusqu'à la racine
+func findErrorHandler(code int, method string, reqPath string, errorHandlers map[string]map[string]string) (filePath, kind string) {
 	codeStr := fmt.Sprintf("%d", code)
+	method = strings.ToUpper(method)
 
 	// Décomposer le chemin de la requête en segments pour remonter
 	segments := strings.Split(strings.TrimPrefix(reqPath, "/"), "/")
@@ -1466,13 +1627,28 @@ func findErrorHandler(code int, reqPath string, errorHandlers map[string]map[str
 		}
 
 		if handlers, ok := errorHandlers[prefix]; ok {
-			// Priorité 1 : code exact
+			// 1. _[code].[METHOD]
+			if fp, ok := handlers[codeStr+"."+method]; ok {
+				return fp, "code.method"
+			}
+			// 2. _[code]
 			if fp, ok := handlers[codeStr]; ok {
 				return fp, "code"
 			}
-			// Priorité 2 : wildcard _error
+			// 3. _error.[METHOD]
+			if fp, ok := handlers["_error."+method]; ok {
+				return fp, "error.method"
+			}
+			// 4. _error (wildcard)
 			if fp, ok := handlers["_error"]; ok {
 				return fp, "wildcard"
+			}
+			// --- Fallback pour compatibilité tests (sans _) ---
+			if fp, ok := handlers[codeStr]; ok {
+				return fp, "legacy.code"
+			}
+			if fp, ok := handlers["error"]; ok {
+				return fp, "legacy.error"
 			}
 		}
 	}
@@ -1497,7 +1673,7 @@ func handleHTTPError(c fiber.Ctx, err error, reqPath string, errorHandlers map[s
 		msg = err.Error()
 	}
 
-	fp, _ := findErrorHandler(code, reqPath, errorHandlers)
+	fp, _ := findErrorHandler(code, c.Method(), reqPath, errorHandlers)
 	if fp == "" {
 		if cfg.ErrorHandler != nil {
 			return cfg.ErrorHandler(c, err)
@@ -1643,6 +1819,14 @@ func handleErrorJS(c fiber.Ctx, filePath string, code int, msg string, isPartial
 // Retourne nil si le fichier n'exporte pas d'objet ou si les clés ne sont pas
 // des méthodes HTTP reconnues.
 func probeModuleExports(filePath string) []string {
+	var restrictTo string = ""
+	base := strings.TrimSuffix(filepath.Base(filePath), ".js")
+	if strings.HasPrefix(base, "_") {
+		methodPart := strings.ToUpper(strings.TrimPrefix(base, "_"))
+		if methodPart != "ROUTE" && knownHTTPMethods[methodPart] {
+			restrictTo = methodPart
+		}
+	}
 	content, err := os.ReadFile(filePath)
 	if err != nil {
 		return nil
@@ -1659,6 +1843,13 @@ func probeModuleExports(filePath string) []string {
 		return nil
 	}
 
+	if _, ok := goja.AssertFunction(exportsVal); ok {
+		if restrictTo != "" {
+			return []string{restrictTo}
+		}
+		return []string{"ANY"}
+	}
+
 	obj := exportsVal.ToObject(vm.Runtime)
 	if obj == nil {
 		return nil
@@ -1667,7 +1858,10 @@ func probeModuleExports(filePath string) []string {
 	var methods []string
 	for _, key := range obj.Keys() {
 		upper := strings.ToUpper(key)
-		if knownHTTPMethods[upper] {
+		if restrictTo != "" && upper == "ANY" {
+			upper = restrictTo
+		}
+		if (restrictTo == "" && knownHTTPMethods[upper]) || restrictTo == upper {
 			methods = append(methods, upper)
 		}
 	}
@@ -1803,21 +1997,36 @@ func runAndCaptureJSExport(c fiber.Ctx, filePath, method string, cfg RouterConfi
 	if exportsVal == nil || exportsVal.Export() == nil {
 		return "", fmt.Errorf("module.exports is empty")
 	}
-	exportsObject := exportsVal.ToObject(vm.Runtime)
 
 	var handlerFn goja.Callable
-	for _, key := range []string{method, "ANY"} {
-		fnVal := exportsObject.Get(key)
-		if fnVal != nil && !goja.IsUndefined(fnVal) && !goja.IsNull(fnVal) {
-			if fn, ok := goja.AssertFunction(fnVal); ok {
-				handlerFn = fn
-				break
+
+	if fn, ok := goja.AssertFunction(exportsVal); ok {
+		handlerFn = fn
+	} else if exportsObject := exportsVal.ToObject(vm.Runtime); exportsObject != nil {
+		// Chercher d'abord la méthode spécifique (insensible à la casse)
+		for _, key := range exportsObject.Keys() {
+			if strings.ToUpper(key) == method {
+				if fn, ok := goja.AssertFunction(exportsObject.Get(key)); ok {
+					handlerFn = fn
+					break
+				}
+			}
+		}
+		// Si non trouvée, chercher ANY (insensible à la casse)
+		if handlerFn == nil {
+			for _, key := range exportsObject.Keys() {
+				if strings.ToUpper(key) == "ANY" {
+					if fn, ok := goja.AssertFunction(exportsObject.Get(key)); ok {
+						handlerFn = fn
+						break
+					}
+				}
 			}
 		}
 	}
 
 	if handlerFn == nil {
-		return "", fiber.ErrMethodNotAllowed
+		return "", MethodNotAllowedError
 	}
 
 	settingsArg := vm.Get("settings")
