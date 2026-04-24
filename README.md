@@ -7,7 +7,7 @@
 # Votre application tourne. Elle continuera de tourner.
 ```
 
-> *Beba. La seule dépendance, c'est Beba.*
+> *Beba. La seule dépendance de Beba, c'est Beba.*
 
 ---
 
