@@ -17,6 +17,7 @@ stdout.log
 beba.pid
 beba
 beba_test
+beba_test_bin
 .vscode
 *.db
 *.db-shm
